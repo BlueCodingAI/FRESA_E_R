@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  password             String
+  name                 String
+  role                 UserRole  @default(Student)
+  emailVerified        Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  phone                String?
+  username             String    @unique
+  endOfCoursePassedAt  DateTime? // Set when user passes the End-of-Course exam (enables cert pay redirect)
+  endOfCourseFailedAt  DateTime? // Set when user fails EOC; 30-day lockout until this date + 30 days
+
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  progress                UserProgress[]
+  certificatePayments     CertificatePayment[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Chapter {
+  id                 String              @id @default(cuid())
+  number             Int                 @unique
+  title              String
+  titleRu            String?
+  description        String?
+  descriptionRu      String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sections           Section[]
+  quizQuestions      QuizQuestion[]
+}
+
+model Section {
+  id            String   @id @default(cuid())
+  chapterId     String
+  sectionNumber Int
+  title         String
+  titleRu       String?
+  text          String
+  textRu        String?
+  type          String
+  audioUrl      String?
+  timestampsUrl String?
+  imageUrl      String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  chapter       Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, sectionNumber])
+  @@index([chapterId])
+}
+
+model QuizQuestion {
+  id            String   @id @default(cuid())
+  chapterId     String?
+  question      String
+  questionRu    String?
+  options       String[] // Array of answer options
+  optionsRu     String[] // Array of answer options (RU)
+  correctAnswer Int      // Index of correct answer (0-based)
+  explanation   Json     // { correct: string, incorrect: string[] }
+  explanationRu Json?    // { correct: string, incorrect: string[] } (RU)
+  audioUrl      String?  // Audio URL for question + options (deprecated - use questionAudioUrl and optionAudioUrls)
+  timestampsUrl String?  // Timestamps URL for question + options (deprecated - use questionTimestampsUrl and optionTimestampsUrls)
+  questionAudioUrl String? // Audio URL for question text only
+  questionTimestampsUrl String? // Timestamps URL for question text only
+  optionAudioUrls Json? // Array of audio URLs for each option [string, string, ...]
+  optionTimestampsUrls Json? // Array of timestamps URLs for each option [string, string, ...]
+  explanationAudioUrl String? // Audio URL for explanation (deprecated - use correctExplanationAudioUrl)
+  explanationTimestampsUrl String? // Timestamps URL for explanation (deprecated - use correctExplanationTimestampsUrl)
+  correctExplanationAudioUrl String? // Audio URL for correct explanation
+  correctExplanationTimestampsUrl String? // Timestamps URL for correct explanation
+  incorrectExplanationAudioUrls Json? // Array of audio URLs for incorrect explanations [string, string, ...]
+  incorrectExplanationTimestampsUrls Json? // Array of timestamps URLs for incorrect explanations [string, string, ...]
+  order         Int      @default(0)
+  quizType      String   @default("chapter") // "chapter", "eligibility", etc.
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  chapter       Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId])
+  @@index([quizType])
+}
+
+model UserProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  chapterNumber Int
+  sectionId     String?  // Current section ID where user stopped
+  sectionNumber Int?     // Current section number
+  quizCompleted Boolean  @default(false) // Whether chapter quiz is completed with 80%+
+  quizScore     Int?     // Last quiz score
+  quizTotal     Int?     // Last quiz total
+  lastAccessed  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterNumber])
+  @@index([userId])
+  @@index([chapterNumber])
+}
+
+model AdditionalQuestion {
+  id            String   @id @default(cuid())
+  question      String
+  questionRu    String?
+  options       String[] // Array of answer options
+  optionsRu     String[] // Array of answer options (RU)
+  correctAnswer Int      // Index of correct answer (0-based)
+  explanation   Json     // { correct: string, incorrect: string[] }
+  explanationRu Json?    // { correct: string, incorrect: string[] } (RU)
+  questionAudioUrl String? // Audio URL for question text only
+  questionTimestampsUrl String? // Timestamps URL for question text only
+  optionAudioUrls Json? // Array of audio URLs for each option [string, string, ...]
+  optionTimestampsUrls Json? // Array of timestamps URLs for each option [string, string, ...]
+  correctExplanationAudioUrl String? // Audio URL for correct explanation
+  correctExplanationTimestampsUrl String? // Timestamps URL for correct explanation
+  incorrectExplanationAudioUrls Json? // Array of audio URLs for incorrect explanations [string, string, ...]
+  incorrectExplanationTimestampsUrls Json? // Array of timestamps URLs for incorrect explanations [string, string, ...]
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Settings {
+  id        String   @id @default("main")
+  examQuestionCount Int      @default(100) // Number of questions for Practice and End-of-Course exams
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g. contact_confirmation, signup_verification
+  name      String   // Display name for admin UI
+  subject   String   @db.Text
+  subjectRu String?  @db.Text
+  body      String   @db.Text
+  bodyRu    String?  @db.Text
+  htmlBody  String?  @db.Text // Optional HTML version
+  htmlBodyRu String? @db.Text // Optional HTML version (RU)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+// Editable CMS pages: About Us, Pricing (content editable from admin)
+model CmsPage {
+  id        String   @id @default(cuid())
+  key       String   @unique // "about_us" | "pricing"
+  title     String   // Page title (e.g. "About Us", "Pricing")
+  titleRu   String?  // Russian title
+  content   String   @db.Text // HTML content from rich text editor
+  contentRu String?  @db.Text // Russian HTML content
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+model ChapterQuizSettings {
+  id        String   @id @default(cuid())
+  chapterNumber Int      @unique
+  questionCount  Int      @default(10) // Number of random questions for this chapter's quiz
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chapterNumber])
+}
+
+model ExamChapterSettings {
+  id        String   @id @default(cuid())
+  chapterNumber Int      @unique
+  questionCount  Int      @default(5) // Number of questions from this chapter in Practice/Final exams
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([chapterNumber])
+}
+
+model CertificatePayment {
+  id                String   @id @default(cuid())
+  userId            String
+  stripePaymentId   String   @unique
+  amount            Int      // Amount in cents ($200 = 20000)
+  status            String   // "pending", "completed", "failed"
+  pdfDownloaded     Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stripePaymentId])
+  @@index([status])
+}
+
+// Log of all sent emails for admin Communication page
+model EmailLog {
+  id          String   @id @default(cuid())
+  to          String   // Recipient email
+  subject     String   @db.Text
+  bodyPreview String   @db.Text // First portion of body (e.g. 2000 chars) for listing
+  sentAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([to])
+  @@index([sentAt])
+}
+
+enum UserRole {
+  Admin
+  Developer
+  Editor
+  Student
+}
