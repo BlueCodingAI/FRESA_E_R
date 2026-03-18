@@ -132,7 +132,7 @@ export function getAudioSegmentsFromText(text: string): string[] {
 const PUNCTUATION_ONLY_REGEX = /^[.,!?;:'"()\[\]{}…—–\-:;\s]+$/
 
 function isPunctuationOnly(token: string): boolean {
-  return token.length > 0 && PUNCTUATION_ONLY_REGEX.test(token) && !/[a-zA-Z0-9]/.test(token)
+  return token.length > 0 && PUNCTUATION_ONLY_REGEX.test(token) && !/[\p{L}\p{N}]/u.test(token)
 }
 
 /**
@@ -182,7 +182,7 @@ export function normalizeWordForMatching(word: string): string {
  * Use when matching HTML segments to display words regardless of formatting.
  */
 export function contentMatches(a: string, b: string): boolean {
-  const norm = (s: string) => s.replace(/[^a-zA-Z0-9']/g, '').toLowerCase().trim()
+  const norm = (s: string) => s.replace(/[^\p{L}\p{N}']/gu, '').toLowerCase().trim()
   const na = norm(a)
   const nb = norm(b)
   if (na.length === 0 && nb.length === 0) return true

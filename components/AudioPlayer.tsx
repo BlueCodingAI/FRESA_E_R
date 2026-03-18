@@ -38,7 +38,8 @@ interface AudioPlayerProps {
 const PUNCT_REGEX = /^[.,!?;:'"()\[\]{}…—–\-:;\s]+$/;
 function isPunctuationOnly(s: string): boolean {
   const t = s.trim();
-  return t.length > 0 && PUNCT_REGEX.test(t) && !/[a-zA-Z0-9]/.test(t);
+  // Unicode-aware: punctuation-only means no letters or digits in any script
+  return t.length > 0 && PUNCT_REGEX.test(t) && !/[\p{L}\p{N}]/u.test(t);
 }
 function hasTrailingPunctuation(word: string): boolean {
   return /[.,!?;:'"()\[\]{}…—–\-:;]$/.test(word.trim());
@@ -62,7 +63,8 @@ function buildDisplayWordsFromTimestampWords(words: WordTimestamp[]): string[] {
 
 /** Normalize for matching: letters, digits, apostrophe only, lowercased. */
 function wordContent(s: string): string {
-  return s.replace(/[^a-zA-Z0-9']/g, '').toLowerCase().trim();
+  // Unicode-aware: keep letters/digits across all scripts (Cyrillic, etc.)
+  return s.replace(/[^\p{L}\p{N}']/gu, '').toLowerCase().trim();
 }
 
 /** Format range from HTML (matches admin Rich Text Editor: bold, italic, underline, color). */
@@ -198,7 +200,7 @@ function getWordBoundariesInText(fullText: string, displayWords: string[]): { st
       while (i < rest.length && /\s/.test(rest[i])) i++;
       if (i >= rest.length) break;
       const start = i;
-      while (i < rest.length && /[a-zA-Z0-9']/.test(rest[i])) i++;
+      while (i < rest.length && /[\p{L}\p{N}']/u.test(rest[i])) i++;
       const end = i;
       while (i < rest.length && /[.,!?;:'"()\[\]{}…—–\-:;]/.test(rest[i])) i++;
       const run = rest.slice(start, i);
