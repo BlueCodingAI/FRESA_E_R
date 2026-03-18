@@ -78,6 +78,8 @@ model Section {
   type          String
   audioUrl      String?
   timestampsUrl String?
+  audioUrlRu    String?
+  timestampsUrlRu String?
   imageUrl      String?
   order         Int      @default(0)
   createdAt     DateTime @default(now())

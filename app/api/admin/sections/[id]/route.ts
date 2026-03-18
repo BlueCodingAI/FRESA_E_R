@@ -61,11 +61,26 @@ export async function PUT(
     }
 
     const { id } = await params
-    const { sectionNumber, title, text, type, audioUrl, timestampsUrl, imageUrl, order } = await request.json()
+    const {
+      sectionNumber,
+      title,
+      titleRu,
+      text,
+      textRu,
+      type,
+      audioUrl,
+      timestampsUrl,
+      audioUrlRu,
+      timestampsUrlRu,
+      imageUrl,
+      order,
+    } = await request.json()
 
     // Validate that audio and timestamps files exist if URLs are provided
     let validatedAudioUrl = audioUrl || null
     let validatedTimestampsUrl = timestampsUrl || null
+    let validatedAudioUrlRu = audioUrlRu || null
+    let validatedTimestampsUrlRu = timestampsUrlRu || null
 
     if (validatedAudioUrl) {
       // Remove leading slash and check if file exists in public/audio
@@ -89,6 +104,27 @@ export async function PUT(
       }
     }
 
+    if (validatedAudioUrlRu) {
+      const audioPath = validatedAudioUrlRu.startsWith("/")
+        ? validatedAudioUrlRu.slice(1)
+        : validatedAudioUrlRu
+      const fullAudioPath = join(process.cwd(), "public", audioPath)
+      if (!existsSync(fullAudioPath)) {
+        console.warn(`⚠️ RU audio not found: ${fullAudioPath}`)
+        validatedAudioUrlRu = null
+      }
+    }
+    if (validatedTimestampsUrlRu) {
+      const tsPath = validatedTimestampsUrlRu.startsWith("/")
+        ? validatedTimestampsUrlRu.slice(1)
+        : validatedTimestampsUrlRu
+      const fullTsPath = join(process.cwd(), "public", tsPath)
+      if (!existsSync(fullTsPath)) {
+        console.warn(`⚠️ RU timestamps not found: ${fullTsPath}`)
+        validatedTimestampsUrlRu = null
+      }
+    }
+
     // Validate image file if URL is provided (only for local files, allow external URLs)
     let validatedImageUrl = imageUrl || null
     if (validatedImageUrl && validatedImageUrl.startsWith('/')) {
@@ -107,10 +143,14 @@ export async function PUT(
       data: {
         sectionNumber,
         title,
+        titleRu: typeof titleRu === "string" ? titleRu : null,
         text,
+        textRu: typeof textRu === "string" ? textRu : null,
         type,
         audioUrl: validatedAudioUrl,
         timestampsUrl: validatedTimestampsUrl,
+        audioUrlRu: validatedAudioUrlRu,
+        timestampsUrlRu: validatedTimestampsUrlRu,
         imageUrl: validatedImageUrl,
         order: order || 0,
       },

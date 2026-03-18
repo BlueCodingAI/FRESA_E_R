@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
       const validatedAudioUrl = validateFileUrl(introduction.audioUrl) || '/audio/intro.mp3'
       const validatedTimestampsUrl = validateFileUrl(introduction.timestampsUrl) || '/timestamps/intro.timestamps.json'
       
+      const validatedAudioRu = validateFileUrl(introduction.audioUrlRu)
+      const validatedTsRu = validateFileUrl(introduction.timestampsUrlRu)
+
       return NextResponse.json({
         introduction: {
           id: introduction.id,
@@ -40,6 +43,8 @@ export async function GET(request: NextRequest) {
           textRu: introduction.textRu,
           audioUrl: validatedAudioUrl,
           timestampsUrl: validatedTimestampsUrl,
+          audioUrlRu: validatedAudioRu || introduction.audioUrlRu || null,
+          timestampsUrlRu: validatedTsRu || introduction.timestampsUrlRu || null,
         },
       })
     }
@@ -51,6 +56,8 @@ export async function GET(request: NextRequest) {
         textRu: "",
         audioUrl: "/audio/intro.mp3",
         timestampsUrl: "/timestamps/intro.timestamps.json",
+        audioUrlRu: null,
+        timestampsUrlRu: null,
       },
     })
   } catch (error) {
@@ -77,11 +84,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { text, textRu, audioUrl, timestampsUrl } = body
+    const { text, textRu, audioUrl, timestampsUrl, audioUrlRu, timestampsUrlRu } = body
 
     // Validate that audio and timestamps files exist if URLs are provided
     let validatedAudioUrl = audioUrl || null
     let validatedTimestampsUrl = timestampsUrl || null
+    let validatedAudioUrlRu = audioUrlRu || null
+    let validatedTimestampsUrlRu = timestampsUrlRu || null
 
     if (validatedAudioUrl) {
       // Remove leading slash and check if file exists in public/audio
@@ -105,6 +114,27 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    if (validatedAudioUrlRu) {
+      const audioPath = validatedAudioUrlRu.startsWith("/")
+        ? validatedAudioUrlRu.slice(1)
+        : validatedAudioUrlRu
+      const fullAudioPath = join(process.cwd(), "public", audioPath)
+      if (!existsSync(fullAudioPath)) {
+        console.warn(`⚠️ RU audio file not found: ${fullAudioPath}. Setting audioUrlRu to null.`)
+        validatedAudioUrlRu = null
+      }
+    }
+    if (validatedTimestampsUrlRu) {
+      const tsPath = validatedTimestampsUrlRu.startsWith("/")
+        ? validatedTimestampsUrlRu.slice(1)
+        : validatedTimestampsUrlRu
+      const fullTsPath = join(process.cwd(), "public", tsPath)
+      if (!existsSync(fullTsPath)) {
+        console.warn(`⚠️ RU timestamps file not found: ${fullTsPath}. Setting timestampsUrlRu to null.`)
+        validatedTimestampsUrlRu = null
+      }
+    }
+
     // Find or create introduction section
     let introduction = await prisma.section.findFirst({
       where: {
@@ -118,9 +148,11 @@ export async function PUT(request: NextRequest) {
         where: { id: introduction.id },
         data: {
           text,
-          textRu: typeof textRu === 'string' ? textRu : null,
+          textRu: typeof textRu === "string" ? textRu : null,
           audioUrl: validatedAudioUrl,
           timestampsUrl: validatedTimestampsUrl,
+          audioUrlRu: validatedAudioUrlRu,
+          timestampsUrlRu: validatedTimestampsUrlRu,
         },
       })
     } else {
@@ -150,6 +182,8 @@ export async function PUT(request: NextRequest) {
           type: 'introduction',
           audioUrl: validatedAudioUrl,
           timestampsUrl: validatedTimestampsUrl,
+          audioUrlRu: validatedAudioUrlRu,
+          timestampsUrlRu: validatedTimestampsUrlRu,
           order: 0,
         },
       })
@@ -162,6 +196,8 @@ export async function PUT(request: NextRequest) {
         textRu: introduction.textRu,
         audioUrl: introduction.audioUrl,
         timestampsUrl: introduction.timestampsUrl,
+        audioUrlRu: introduction.audioUrlRu,
+        timestampsUrlRu: introduction.timestampsUrlRu,
       },
     })
   } catch (error) {

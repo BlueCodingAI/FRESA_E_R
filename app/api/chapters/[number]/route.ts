@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { existsSync } from 'fs'
 import { join } from 'path'
+import { getRequestLocale } from '@/lib/locale-server'
 
 // Helper function to validate file exists
 function validateFileUrl(url: string | null): string | null {
@@ -54,18 +55,27 @@ export async function GET(
       return NextResponse.json({ error: 'Chapter not found. Please run the seed script to initialize data.' }, { status: 404 })
     }
 
+    const locale = getRequestLocale(request)
+
     // Return sections with their audio URLs (don't validate strictly - let browser handle 404s)
     // This allows audio to work even if files are generated dynamically or paths differ slightly
     const validatedChapter = {
       ...chapter,
-      sections: chapter.sections.map((section: any) => ({
-        ...section,
-        // Always return the URL from database, even if file doesn't exist yet
-        // The browser will handle 404s gracefully, and files might be generated dynamically
-        audioUrl: section.audioUrl || null,
-        timestampsUrl: section.timestampsUrl || null,
-        imageUrl: section.imageUrl || null,
-      })),
+      sections: chapter.sections.map((section: any) => {
+        const useRu = locale === 'ru'
+        return {
+          ...section,
+          title: useRu ? (section.titleRu || section.title) : section.title,
+          text: useRu ? (section.textRu || section.text) : section.text,
+          audioUrl: useRu
+            ? (section.audioUrlRu || section.audioUrl || null)
+            : (section.audioUrl || null),
+          timestampsUrl: useRu
+            ? (section.timestampsUrlRu || section.timestampsUrl || null)
+            : (section.timestampsUrl || null),
+          imageUrl: section.imageUrl || null,
+        }
+      }),
       quizQuestions: chapter.quizQuestions.map((question: any) => ({
         ...question,
         // Ensure all audio URLs are properly returned

@@ -21,12 +21,27 @@ export async function GET(request: NextRequest) {
     if (introduction) {
       // Return URLs from database - don't validate strictly
       // Let browser handle 404s, files might be generated dynamically
+      const ruAudio =
+        introduction.audioUrlRu || introduction.audioUrl || "/audio/intro.mp3"
+      const ruTs =
+        introduction.timestampsUrlRu ||
+        introduction.timestampsUrl ||
+        "/timestamps/intro.timestamps.json"
       return NextResponse.json({
         introduction: {
           id: introduction.id,
-          text: locale === 'ru' ? (introduction.textRu || introduction.text) : introduction.text,
-          audioUrl: introduction.audioUrl || '/audio/intro.mp3',
-          timestampsUrl: introduction.timestampsUrl || '/timestamps/intro.timestamps.json',
+          text:
+            locale === "ru"
+              ? introduction.textRu || introduction.text
+              : introduction.text,
+          audioUrl:
+            locale === "ru"
+              ? ruAudio
+              : introduction.audioUrl || "/audio/intro.mp3",
+          timestampsUrl:
+            locale === "ru"
+              ? ruTs
+              : introduction.timestampsUrl || "/timestamps/intro.timestamps.json",
         },
       })
     }

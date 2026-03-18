@@ -5,15 +5,20 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import StarsBackground from "@/components/StarsBackground";
 import RichTextEditor from "@/components/RichTextEditor";
+import AdminTranslateToolbar from "@/components/AdminTranslateToolbar";
 
 interface Section {
   id: string;
   sectionNumber: number;
   title: string;
+  titleRu?: string | null;
   text: string;
+  textRu?: string | null;
   type: string;
   audioUrl: string | null;
   timestampsUrl: string | null;
+  audioUrlRu?: string | null;
+  timestampsUrlRu?: string | null;
   imageUrl: string | null;
   order: number;
 }
@@ -74,10 +79,14 @@ export default function ChapterEditPage() {
   const [sectionForm, setSectionForm] = useState<Partial<Section>>({
     sectionNumber: 1,
     title: "",
+    titleRu: "",
     text: "",
+    textRu: "",
     type: "content",
     audioUrl: "",
     timestampsUrl: "",
+    audioUrlRu: "",
+    timestampsUrlRu: "",
     imageUrl: "",
     order: 0,
   });
@@ -111,23 +120,27 @@ export default function ChapterEditPage() {
     };
   });
 
-  const handleFileUpload = async (file: File, type: 'audio' | 'timestamps' | 'image') => {
+  const handleFileUpload = async (
+    file: File,
+    type: "audio" | "timestamps" | "image",
+    lang: "en" | "ru" = "en"
+  ) => {
     try {
-      if (type === 'audio') {
+      if (type === "audio") {
         setUploadingAudio(true);
-      } else if (type === 'timestamps') {
+      } else if (type === "timestamps") {
         setUploadingTimestamps(true);
-      } else if (type === 'image') {
+      } else if (type === "image") {
         setUploadingImage(true);
       }
 
       const token = getToken();
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', type);
+      formData.append("file", file);
+      formData.append("type", type);
 
-      const response = await fetch('/api/admin/upload', {
-        method: 'POST',
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -136,11 +149,15 @@ export default function ChapterEditPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (type === 'audio') {
-          setSectionForm({ ...sectionForm, audioUrl: data.url });
-        } else if (type === 'timestamps') {
-          setSectionForm({ ...sectionForm, timestampsUrl: data.url });
-        } else if (type === 'image') {
+        if (type === "audio") {
+          if (lang === "ru")
+            setSectionForm({ ...sectionForm, audioUrlRu: data.url });
+          else setSectionForm({ ...sectionForm, audioUrl: data.url });
+        } else if (type === "timestamps") {
+          if (lang === "ru")
+            setSectionForm({ ...sectionForm, timestampsUrlRu: data.url });
+          else setSectionForm({ ...sectionForm, timestampsUrl: data.url });
+        } else if (type === "image") {
           setSectionForm({ ...sectionForm, imageUrl: data.url });
         }
         alert(`File uploaded successfully! URL: ${data.url}`);
@@ -232,8 +249,12 @@ export default function ChapterEditPage() {
       const sectionData = {
         ...sectionForm,
         chapterId: chapterId === "new" ? null : chapterId,
+        titleRu: sectionForm.titleRu?.trim() ? sectionForm.titleRu : null,
+        textRu: sectionForm.textRu?.trim() ? sectionForm.textRu : null,
         audioUrl: sectionForm.audioUrl || null,
         timestampsUrl: sectionForm.timestampsUrl || null,
+        audioUrlRu: sectionForm.audioUrlRu || null,
+        timestampsUrlRu: sectionForm.timestampsUrlRu || null,
         imageUrl: sectionForm.imageUrl || null,
       };
 
@@ -253,10 +274,14 @@ export default function ChapterEditPage() {
         setSectionForm({
           sectionNumber: 1,
           title: "",
+          titleRu: "",
           text: "",
+          textRu: "",
           type: "content",
           audioUrl: "",
           timestampsUrl: "",
+          audioUrlRu: "",
+          timestampsUrlRu: "",
           imageUrl: "",
           order: 0,
         });
@@ -288,7 +313,13 @@ export default function ChapterEditPage() {
 
   const startEditSection = (section: Section) => {
     setEditingSection(section.id);
-    setSectionForm(section);
+    setSectionForm({
+      ...section,
+      titleRu: section.titleRu ?? "",
+      textRu: section.textRu ?? "",
+      audioUrlRu: section.audioUrlRu ?? "",
+      timestampsUrlRu: section.timestampsUrlRu ?? "",
+    });
     setShowSectionForm(true);
   };
 
@@ -320,85 +351,175 @@ export default function ChapterEditPage() {
     return (tmp.textContent || tmp.innerText || '').trim();
   };
 
-  // Helper function to build request body with TTS settings
-  const buildAudioRequest = (text: string, context: 'section' | 'quiz' | 'introduction' = 'section', voiceId?: string) => {
-    // Strip HTML from text before sending to audio generation API
+  const buildAudioRequest = (
+    text: string,
+    context: "section" | "quiz" | "introduction" = "section",
+    voiceId?: string,
+    fileKey?: string
+  ) => {
     const plainText = stripHTML(text);
     return {
       text: plainText,
-      type: 'both',
+      type: "both" as const,
       context,
-      voiceId,
-      ...ttsSettings, // Include all TTS settings
+      ...(voiceId ? { voiceId } : {}),
+      ...(fileKey ? { fileKey } : {}),
+      ...ttsSettings,
     };
   };
 
-  const handleGenerateAudio = async (text: string) => {
-    if (!text || text.trim().length === 0) {
-      alert("Please enter text content first");
+  const saveSectionPayload = (form: Partial<Section>) => ({
+    ...form,
+    chapterId: chapterId === "new" ? null : chapterId,
+    titleRu: form.titleRu?.trim() ? form.titleRu : null,
+    textRu: form.textRu?.trim() ? form.textRu : null,
+    audioUrl: form.audioUrl || null,
+    timestampsUrl: form.timestampsUrl || null,
+    audioUrlRu: form.audioUrlRu || null,
+    timestampsUrlRu: form.timestampsUrlRu || null,
+    imageUrl: form.imageUrl || null,
+  });
+
+  const handleGenerateSectionAudio = async (lang: "en" | "ru") => {
+    const html = lang === "en" ? sectionForm.text || "" : sectionForm.textRu || "";
+    if (!stripHTML(html)) {
+      alert(lang === "en" ? "Enter English text first." : "Enter Russian text first.");
       return;
     }
-
     try {
       setGeneratingAudio(true);
       const token = getToken();
-      
-      const response = await fetch('/api/admin/generate-audio', {
-        method: 'POST',
+      const response = await fetch("/api/admin/generate-audio", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(buildAudioRequest(text, 'section')),
+        body: JSON.stringify(
+          buildAudioRequest(html, "section", undefined, lang === "en" ? "en" : "ru")
+        ),
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        const updatedForm = {
-          ...sectionForm,
-          audioUrl: data.audioUrl,
-          timestampsUrl: data.timestampsUrl,
-        };
-        setSectionForm(updatedForm);
-        
-        // Automatically save the section with generated URLs if we're editing an existing section
-        if (editingSection) {
-          try {
-            const token = getToken();
-            const saveResponse = await fetch(`/api/admin/sections/${editingSection}`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                ...updatedForm,
-                chapterId: chapterId === "new" ? null : chapterId,
-              }),
-            });
-
-            if (saveResponse.ok) {
-              await fetchChapter();
-              alert(`✅ Audio and timestamps generated and saved successfully!\n\nAudio: ${data.audioUrl}\nTimestamps: ${data.timestampsUrl}\n\nThe section has been updated with these files.`);
-            } else {
-              const saveError = await saveResponse.json();
-              alert(`⚠️ Audio and timestamps generated, but failed to save:\n${saveError.error || 'Unknown error'}\n\nYou can manually save by clicking "Save Section".`);
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`❌ ${error.error || "Failed"}`);
+        return;
+      }
+      const data = await response.json();
+      const updatedForm =
+        lang === "en"
+          ? {
+              ...sectionForm,
+              audioUrl: data.audioUrl,
+              timestampsUrl: data.timestampsUrl,
             }
-          } catch (saveErr) {
-            console.error('Error auto-saving:', saveErr);
-            alert(`⚠️ Audio and timestamps generated, but failed to save automatically.\n\nYou can manually save by clicking "Save Section".`);
-          }
+          : {
+              ...sectionForm,
+              audioUrlRu: data.audioUrl,
+              timestampsUrlRu: data.timestampsUrl,
+            };
+      setSectionForm(updatedForm);
+      if (editingSection) {
+        const saveResponse = await fetch(`/api/admin/sections/${editingSection}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(saveSectionPayload(updatedForm)),
+        });
+        if (saveResponse.ok) {
+          await fetchChapter();
+          alert(`✅ ${lang.toUpperCase()} audio saved.`);
         } else {
-          // New section - just show success message
-          alert(`✅ Audio and timestamps generated successfully!\n\nAudio: ${data.audioUrl}\nTimestamps: ${data.timestampsUrl}\n\nClick "Save Section" to save the section with these files.`);
+          const saveError = await saveResponse.json();
+          alert(`⚠️ Generated but save failed: ${saveError.error || "error"}`);
         }
       } else {
-        const error = await response.json();
-        alert(`❌ Generation failed: ${error.error || 'Unknown error'}`);
+        alert(
+          `✅ ${lang.toUpperCase()} audio ready — click Save Section to persist.`
+        );
       }
     } catch (err) {
-      console.error('Error generating audio:', err);
-      alert('Failed to generate audio');
+      console.error(err);
+      alert("Failed to generate audio");
+    } finally {
+      setGeneratingAudio(false);
+    }
+  };
+
+  const handleGenerateBothSectionAudios = async () => {
+    const en = stripHTML(sectionForm.text || "");
+    const ru = stripHTML(sectionForm.textRu || "");
+    if (!en && !ru) {
+      alert("Add EN and/or RU body text first.");
+      return;
+    }
+    try {
+      setGeneratingAudio(true);
+      const token = getToken();
+      let form = { ...sectionForm };
+      if (en) {
+        const r = await fetch("/api/admin/generate-audio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(
+            buildAudioRequest(sectionForm.text || "", "section", undefined, "en")
+          ),
+        });
+        if (r.ok) {
+          const d = await r.json();
+          form = {
+            ...form,
+            audioUrl: d.audioUrl,
+            timestampsUrl: d.timestampsUrl,
+          };
+        } else {
+          const e = await r.json();
+          alert(`EN: ${e.error}`);
+        }
+      }
+      if (ru) {
+        const r2 = await fetch("/api/admin/generate-audio", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(
+            buildAudioRequest(sectionForm.textRu || "", "section", undefined, "ru")
+          ),
+        });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          form = {
+            ...form,
+            audioUrlRu: d2.audioUrl,
+            timestampsUrlRu: d2.timestampsUrl,
+          };
+        } else {
+          const e2 = await r2.json();
+          alert(`RU: ${e2.error}`);
+        }
+      }
+      setSectionForm(form);
+      if (editingSection) {
+        await fetch(`/api/admin/sections/${editingSection}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(saveSectionPayload(form)),
+        });
+        await fetchChapter();
+      }
+      alert(editingSection ? "✅ EN/RU audio saved." : "✅ Generated — Save Section to persist.");
+    } catch (err) {
+      console.error(err);
+      alert("Failed");
     } finally {
       setGeneratingAudio(false);
     }
@@ -1331,58 +1452,105 @@ export default function ChapterEditPage() {
       let successCount = 0;
       let failCount = 0;
 
-      // 1. Generate audio for all sections
+      // 1. Generate audio for all sections (EN + RU when text exists)
       for (const section of sections) {
-        if (!section.text || section.text.trim().length === 0) {
-          results.push(`⏭️ Section "${section.title}": Skipped (no text)`);
+        const hasEn = section.text?.trim();
+        const hasRu = section.textRu?.trim();
+        if (!hasEn && !hasRu) {
+          results.push(`⏭️ Section "${section.title}": Skipped (no EN/RU body)`);
           continue;
         }
 
         try {
-          const response = await fetch('/api/admin/generate-audio', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(buildAudioRequest(section.text.trim(), 'section')),
-          });
+          let audioUrl = section.audioUrl;
+          let timestampsUrl = section.timestampsUrl;
+          let audioUrlRu = section.audioUrlRu;
+          let timestampsUrlRu = section.timestampsUrlRu;
 
-          if (response.ok) {
-            const data = await response.json();
-            // Update section with generated audio - only update audio fields
-            const updateResponse = await fetch(`/api/admin/sections/${section.id}`, {
-              method: 'PUT',
+          if (hasEn) {
+            const response = await fetch("/api/admin/generate-audio", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({
-                sectionNumber: section.sectionNumber,
-                title: section.title,
-                text: section.text,
-                type: section.type,
-                order: section.order,
-                audioUrl: data.audioUrl,
-                timestampsUrl: data.timestampsUrl,
-              }),
+              body: JSON.stringify(
+                buildAudioRequest(section.text.trim(), "section", undefined, "en")
+              ),
             });
-
-            if (updateResponse.ok) {
-              results.push(`✅ Section "${section.title}": ${data.audioUrl}`);
-              successCount++;
+            if (response.ok) {
+              const data = await response.json();
+              audioUrl = data.audioUrl;
+              timestampsUrl = data.timestampsUrl;
             } else {
-              const updateError = await updateResponse.json();
-              results.push(`❌ Section "${section.title}": Generated but failed to update - ${updateError.error || 'Unknown error'}`);
-              failCount++;
+              const error = await response.json();
+              results.push(`❌ Section "${section.title}" EN: ${error.error || "error"}`);
             }
+          }
+
+          if (hasRu) {
+            const response2 = await fetch("/api/admin/generate-audio", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(
+                buildAudioRequest(
+                  (section.textRu || "").trim(),
+                  "section",
+                  undefined,
+                  "ru"
+                )
+              ),
+            });
+            if (response2.ok) {
+              const d2 = await response2.json();
+              audioUrlRu = d2.audioUrl;
+              timestampsUrlRu = d2.timestampsUrl;
+            } else {
+              const e2 = await response2.json();
+              results.push(`❌ Section "${section.title}" RU: ${e2.error || "error"}`);
+            }
+          }
+
+          const updateResponse = await fetch(`/api/admin/sections/${section.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              sectionNumber: section.sectionNumber,
+              title: section.title,
+              titleRu: section.titleRu ?? null,
+              text: section.text,
+              textRu: section.textRu ?? null,
+              type: section.type,
+              order: section.order,
+              imageUrl: section.imageUrl,
+              audioUrl,
+              timestampsUrl,
+              audioUrlRu,
+              timestampsUrlRu,
+            }),
+          });
+
+          if (updateResponse.ok) {
+            results.push(
+              `✅ Section "${section.title}": EN ${hasEn ? "✓" : "—"} RU ${hasRu ? "✓" : "—"}`
+            );
+            successCount++;
           } else {
-            const error = await response.json();
-            results.push(`❌ Section "${section.title}": ${error.error || 'Unknown error'}`);
+            const updateError = await updateResponse.json();
+            results.push(
+              `❌ Section "${section.title}": save failed — ${updateError.error || "error"}`
+            );
             failCount++;
           }
-        } catch (err: any) {
-          results.push(`❌ Section "${section.title}": ${err.message || err}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          results.push(`❌ Section "${section.title}": ${msg}`);
           failCount++;
         }
       }
@@ -1899,10 +2067,14 @@ export default function ChapterEditPage() {
                 setSectionForm({
                   sectionNumber: maxSectionNumber + 1,
                   title: "",
+                  titleRu: "",
                   text: "",
+                  textRu: "",
                   type: "content",
                   audioUrl: "",
                   timestampsUrl: "",
+                  audioUrlRu: "",
+                  timestampsUrlRu: "",
                   imageUrl: "",
                   order: sections.length,
                 });
@@ -2049,7 +2221,7 @@ export default function ChapterEditPage() {
         {/* Section Form Modal */}
         {showSectionForm && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 md:p-4">
-            <div className="bg-[#1a1f3a] rounded-2xl border border-cyan-500/20 p-4 md:p-6 w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#1a1f3a] rounded-2xl border border-cyan-500/20 p-4 md:p-6 w-full max-w-5xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
               <h2 className="text-xl md:text-2xl font-bold text-white mb-4 md:mb-6">
                 {editingSection ? "Edit Section" : "New Section"}
               </h2>
@@ -2072,19 +2244,39 @@ export default function ChapterEditPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs md:text-sm font-medium text-gray-300 mb-1 md:mb-2">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={sectionForm.title || ""}
-                    onChange={(e) =>
-                      setSectionForm({ ...sectionForm, title: e.target.value })
-                    }
-                    className="w-full px-3 md:px-4 py-2 text-sm md:text-base bg-[#0a0e27]/50 border border-cyan-500/30 rounded-lg text-white"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Title (EN)</label>
+                    <input
+                      type="text"
+                      value={sectionForm.title || ""}
+                      onChange={(e) =>
+                        setSectionForm({ ...sectionForm, title: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-sm bg-[#0a0e27]/50 border border-cyan-500/30 rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">Title (RU)</label>
+                    <input
+                      type="text"
+                      value={sectionForm.titleRu || ""}
+                      onChange={(e) =>
+                        setSectionForm({ ...sectionForm, titleRu: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-sm bg-[#0a0e27]/50 border border-pink-500/30 rounded-lg text-white"
+                    />
+                  </div>
                 </div>
+                <AdminTranslateToolbar
+                  getToken={getToken}
+                  enValue={sectionForm.title || ""}
+                  ruValue={sectionForm.titleRu || ""}
+                  setEn={(v) => setSectionForm({ ...sectionForm, title: v })}
+                  setRu={(v) => setSectionForm({ ...sectionForm, titleRu: v })}
+                  format="plain"
+                  compact
+                />
 
                 <div>
                   <label className="block text-xs md:text-sm font-medium text-gray-300 mb-1 md:mb-2">
@@ -2101,123 +2293,200 @@ export default function ChapterEditPage() {
                   </select>
                 </div>
 
-                <div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
-                    <label className="block text-xs md:text-sm font-medium text-gray-300">
-                      Text Content
-                    </label>
-                    <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AdminTranslateToolbar
+                    getToken={getToken}
+                    enValue={sectionForm.text || ""}
+                    ruValue={sectionForm.textRu || ""}
+                    setEn={(v) => setSectionForm({ ...sectionForm, text: v })}
+                    setRu={(v) => setSectionForm({ ...sectionForm, textRu: v })}
+                    format="html"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowTTSSettings(true)}
+                    className="px-2 py-1 text-xs bg-purple-600 rounded-lg text-white"
+                  >
+                    ⚙️ TTS
+                  </button>
+                  <button
+                    type="button"
+                    disabled={generatingAudio}
+                    onClick={handleGenerateBothSectionAudios}
+                    className="px-2 py-1 text-xs bg-amber-600 rounded-lg text-white disabled:opacity-50"
+                  >
+                    {generatingAudio ? "…" : "🎙️ Gen EN+RU audio"}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-cyan-500/20 p-3 space-y-2 bg-[#0a0e27]/30">
+                    <div className="text-xs font-bold text-cyan-300">Body EN</div>
+                    <RichTextEditor
+                      value={sectionForm.text || ""}
+                      onChange={(value) =>
+                        setSectionForm({ ...sectionForm, text: value })
+                      }
+                      rows={7}
+                      placeholder="English content…"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>{stripHTML(sectionForm.text || "").length} / 2000</span>
                       <button
                         type="button"
-                        onClick={() => setShowTTSSettings(true)}
-                        className="px-2 md:px-3 py-1 text-xs md:text-sm bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transition-all"
-                        title="TTS Settings"
+                        disabled={
+                          generatingAudio ||
+                          !stripHTML(sectionForm.text || "")
+                        }
+                        onClick={() => handleGenerateSectionAudio("en")}
+                        className="px-2 py-1 bg-green-600/80 rounded text-white disabled:opacity-40"
                       >
-                        ⚙️ Settings
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateAudio(sectionForm.text || "")}
-                        disabled={generatingAudio || !sectionForm.text || sectionForm.text.trim().length === 0}
-                        className="px-2 md:px-3 py-1 text-xs md:text-sm bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                      >
-                        {generatingAudio ? "🔄 Generating..." : "🎙️ Generate Audio & Timestamps"}
+                        Gen EN audio
                       </button>
                     </div>
-                  </div>
-                  <RichTextEditor
-                    value={sectionForm.text || ""}
-                    onChange={(value) =>
-                      setSectionForm({ ...sectionForm, text: value })
-                    }
-                    rows={8}
-                    placeholder="Enter section text content..."
-                  />
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 mt-1">
-                    <p className="text-xs text-gray-400">
-                      Enter your text and click "Generate Audio & Timestamps" to automatically create audio and timestamp files using Inworld AI
-                    </p>
-                    <span
-                      className={`text-xs font-semibold whitespace-nowrap ${
-                        stripHTML(sectionForm.text || "").length > 2000
-                          ? "text-red-400"
-                          : stripHTML(sectionForm.text || "").length > 1800
-                          ? "text-yellow-400"
-                          : "text-gray-400"
-                      }`}
-                    >
-                      {stripHTML(sectionForm.text || "").length} / 2000 characters
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs md:text-sm font-medium text-gray-300 mb-1 md:mb-2">
-                    Audio URL
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={sectionForm.audioUrl || ""}
-                      onChange={(e) =>
-                        setSectionForm({ ...sectionForm, audioUrl: e.target.value })
-                      }
-                      className="flex-1 px-3 md:px-4 py-2 text-sm md:text-base bg-[#0a0e27]/50 border border-cyan-500/30 rounded-lg text-white"
-                      placeholder="/audio/chapter1-section1.mp3"
-                    />
-                    <label className="px-3 md:px-4 py-2 text-xs md:text-sm bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed text-center whitespace-nowrap">
-                      {uploadingAudio ? "Uploading..." : "📁 Upload"}
-                      <input
-                        type="file"
-                        accept=".mp3,audio/mpeg"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileUpload(file, 'audio');
+                    <div>
+                      <label className="text-[10px] text-gray-400">Audio (EN)</label>
+                      <div className="flex gap-1 mt-0.5">
+                        <input
+                          type="text"
+                          value={sectionForm.audioUrl || ""}
+                          onChange={(e) =>
+                            setSectionForm({
+                              ...sectionForm,
+                              audioUrl: e.target.value,
+                            })
                           }
-                        }}
-                        disabled={uploadingAudio}
-                      />
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Upload MP3 file or enter URL manually</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs md:text-sm font-medium text-gray-300 mb-1 md:mb-2">
-                    Timestamps URL
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={sectionForm.timestampsUrl || ""}
-                      onChange={(e) =>
-                        setSectionForm({
-                          ...sectionForm,
-                          timestampsUrl: e.target.value,
-                        })
-                      }
-                      className="flex-1 px-3 md:px-4 py-2 text-sm md:text-base bg-[#0a0e27]/50 border border-cyan-500/30 rounded-lg text-white"
-                      placeholder="/timestamps/chapter1-section1.timestamps.json"
-                    />
-                    <label className="px-3 md:px-4 py-2 text-xs md:text-sm bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed text-center whitespace-nowrap">
-                      {uploadingTimestamps ? "Uploading..." : "📁 Upload"}
-                      <input
-                        type="file"
-                        accept=".json,application/json"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileUpload(file, 'timestamps');
+                          className="flex-1 px-2 py-1 text-xs bg-[#0a0e27]/50 border border-cyan-500/30 rounded text-white"
+                        />
+                        <label className="px-2 py-1 text-[10px] bg-cyan-600 rounded cursor-pointer whitespace-nowrap">
+                          📁
+                          <input
+                            type="file"
+                            accept=".mp3,audio/mpeg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleFileUpload(f, "audio", "en");
+                            }}
+                            disabled={uploadingAudio}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400">Timestamps (EN)</label>
+                      <div className="flex gap-1 mt-0.5">
+                        <input
+                          type="text"
+                          value={sectionForm.timestampsUrl || ""}
+                          onChange={(e) =>
+                            setSectionForm({
+                              ...sectionForm,
+                              timestampsUrl: e.target.value,
+                            })
                           }
-                        }}
-                        disabled={uploadingTimestamps}
-                      />
-                    </label>
+                          className="flex-1 px-2 py-1 text-xs bg-[#0a0e27]/50 border border-cyan-500/30 rounded text-white"
+                        />
+                        <label className="px-2 py-1 text-[10px] bg-purple-600 rounded cursor-pointer">
+                          📁
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleFileUpload(f, "timestamps", "en");
+                            }}
+                            disabled={uploadingTimestamps}
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Upload JSON file or enter URL manually</p>
+
+                  <div className="rounded-xl border border-pink-500/20 p-3 space-y-2 bg-[#0a0e27]/30">
+                    <div className="text-xs font-bold text-pink-300">Body RU</div>
+                    <RichTextEditor
+                      value={sectionForm.textRu || ""}
+                      onChange={(value) =>
+                        setSectionForm({ ...sectionForm, textRu: value })
+                      }
+                      rows={7}
+                      placeholder="Русский текст…"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500">
+                      <span>{stripHTML(sectionForm.textRu || "").length} chars</span>
+                      <button
+                        type="button"
+                        disabled={
+                          generatingAudio ||
+                          !stripHTML(sectionForm.textRu || "")
+                        }
+                        onClick={() => handleGenerateSectionAudio("ru")}
+                        className="px-2 py-1 bg-pink-600/80 rounded text-white disabled:opacity-40"
+                      >
+                        Gen RU audio
+                      </button>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400">Audio (RU)</label>
+                      <div className="flex gap-1 mt-0.5">
+                        <input
+                          type="text"
+                          value={sectionForm.audioUrlRu || ""}
+                          onChange={(e) =>
+                            setSectionForm({
+                              ...sectionForm,
+                              audioUrlRu: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-2 py-1 text-xs bg-[#0a0e27]/50 border border-pink-500/30 rounded text-white"
+                        />
+                        <label className="px-2 py-1 text-[10px] bg-pink-700 rounded cursor-pointer">
+                          📁
+                          <input
+                            type="file"
+                            accept=".mp3,audio/mpeg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleFileUpload(f, "audio", "ru");
+                            }}
+                            disabled={uploadingAudio}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-400">Timestamps (RU)</label>
+                      <div className="flex gap-1 mt-0.5">
+                        <input
+                          type="text"
+                          value={sectionForm.timestampsUrlRu || ""}
+                          onChange={(e) =>
+                            setSectionForm({
+                              ...sectionForm,
+                              timestampsUrlRu: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-2 py-1 text-xs bg-[#0a0e27]/50 border border-pink-500/30 rounded text-white"
+                        />
+                        <label className="px-2 py-1 text-[10px] bg-purple-700 rounded cursor-pointer">
+                          📁
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleFileUpload(f, "timestamps", "ru");
+                            }}
+                            disabled={uploadingTimestamps}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

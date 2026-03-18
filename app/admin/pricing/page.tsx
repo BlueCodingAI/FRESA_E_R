@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import StarsBackground from "@/components/StarsBackground";
 import RichTextEditor from "@/components/RichTextEditor";
+import AdminTranslateToolbar from "@/components/AdminTranslateToolbar";
 
 export default function AdminPricingPage() {
   const router = useRouter();
@@ -159,6 +160,15 @@ export default function AdminPricingPage() {
             </div>
           </div>
 
+          <AdminTranslateToolbar
+            getToken={getToken}
+            enValue={title}
+            ruValue={titleRu}
+            setEn={setTitle}
+            setRu={setTitleRu}
+            format="plain"
+            className="mb-3"
+          />
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Page title ({activeLang === "en" ? "EN" : "RU"})
           </label>
@@ -168,6 +178,15 @@ export default function AdminPricingPage() {
             onChange={(e) => (activeLang === "en" ? setTitle(e.target.value) : setTitleRu(e.target.value))}
             className="w-full px-4 py-3 bg-[#0a0e27]/50 border border-cyan-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 mb-6"
             placeholder={activeLang === "en" ? "Pricing" : "Цены"}
+          />
+          <AdminTranslateToolbar
+            getToken={getToken}
+            enValue={content}
+            ruValue={contentRu}
+            setEn={setContent}
+            setRu={setContentRu}
+            format="html"
+            className="mb-3"
           />
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Content (HTML) ({activeLang === "en" ? "EN" : "RU"})

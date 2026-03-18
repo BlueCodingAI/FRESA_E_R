@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import StarsBackground from "@/components/StarsBackground";
 import RichTextEditor from "@/components/RichTextEditor";
+import AdminTranslateToolbar from "@/components/AdminTranslateToolbar";
 
 export default function AdminAboutUsPage() {
   const router = useRouter();
@@ -159,6 +160,15 @@ export default function AdminAboutUsPage() {
             </div>
           </div>
 
+          <AdminTranslateToolbar
+            getToken={getToken}
+            enValue={title}
+            ruValue={titleRu}
+            setEn={setTitle}
+            setRu={setTitleRu}
+            format="plain"
+            className="mb-3"
+          />
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Page title ({activeLang === "en" ? "EN" : "RU"})
           </label>
@@ -170,6 +180,15 @@ export default function AdminAboutUsPage() {
             placeholder={activeLang === "en" ? "About Us" : "О нас"}
           />
 
+          <AdminTranslateToolbar
+            getToken={getToken}
+            enValue={content}
+            ruValue={contentRu}
+            setEn={setContent}
+            setRu={setContentRu}
+            format="html"
+            className="mb-3"
+          />
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Content (HTML) ({activeLang === "en" ? "EN" : "RU"})
           </label>

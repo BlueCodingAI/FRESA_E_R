@@ -10,7 +10,8 @@ import { cleanTextForAudio, getAudioSegmentsFromText } from '@/lib/text-cleaning
 // Inworld uses Basic authentication with Base64 encoded credentials
 // Format: Base64(workspace_id:api_key)
 const INWORLD_API_KEY = process.env.INWORLD_API_KEY // Base64 encoded credentials (workspace_id:api_key)
-const INWORLD_MAN_VOICE_ID = process.env.INWORLD_MAN_VOICE_ID || 'Dennis' // Man's voice ID for introduction and chapter sections
+const INWORLD_EN_VOICE_ID = process.env.INWORLD_EN_VOICE_ID || process.env.INWORLD_MAN_VOICE_ID || 'Dennis' // EN voice ID for introduction and chapter sections
+const INWORLD_RU_VOICE_ID = process.env.INWORLD_RU_VOICE_ID || process.env.INWORLD_WOMAN_VOICE_ID || 'Dennis' // RU voice ID for translation-generated audio
 const INWORLD_WOMAN_VOICE_ID = process.env.INWORLD_WOMAN_VOICE_ID || 'Dennis' // Woman's voice ID for quiz questions (can be changed to a different voice)
 const INWORLD_MODEL_ID = process.env.INWORLD_MODEL_ID || 'inworld-tts-1' // Model: inworld-tts-1 or inworld-tts-1-max
 const INWORLD_TEMPERATURE = parseFloat(process.env.INWORLD_TEMPERATURE || '1.1') // Temperature (0.0 to 2.0, default 1.1). Higher = more random/expressive, lower = more deterministic
@@ -40,7 +41,9 @@ export async function POST(request: NextRequest) {
       text, 
       type, 
       voiceId, 
-      context, 
+      context,
+      /** e.g. "en" | "ru" — unique filenames when generating multiple languages */
+      fileKey,
       // Inworld TTS API parameters
       modelId,
       audioEncoding,
@@ -67,16 +70,21 @@ export async function POST(request: NextRequest) {
 
     // Determine voice ID:
     // 1. If voiceId is explicitly provided, use it
-    // 2. If context is 'quiz', use woman's voice
-    // 3. Otherwise (sections, introduction), use man's voice (default)
+    // 2. If fileKey is en/ru, use the matching voice from env
+    // 3. If context is 'quiz', use woman's voice
+    // 4. Otherwise (sections, introduction), use EN voice by default
     let selectedVoiceId: string
+    const normalizedFileKey = typeof fileKey === 'string' ? fileKey.toLowerCase() : ''
     if (voiceId) {
       selectedVoiceId = voiceId
+    } else if (normalizedFileKey === 'ru') {
+      selectedVoiceId = INWORLD_RU_VOICE_ID
+    } else if (normalizedFileKey === 'en') {
+      selectedVoiceId = INWORLD_EN_VOICE_ID
     } else if (context === 'quiz') {
       selectedVoiceId = INWORLD_WOMAN_VOICE_ID
     } else {
-      // Default to man's voice for introduction and sections
-      selectedVoiceId = INWORLD_MAN_VOICE_ID
+      selectedVoiceId = INWORLD_EN_VOICE_ID
     }
 
     // Build options object with defaults from env or request overrides
@@ -177,8 +185,10 @@ export async function POST(request: NextRequest) {
 
     // Generate unique filename
     const timestamp = Date.now()
+    const keyPart =
+      typeof fileKey === 'string' && /^[a-zA-Z0-9_-]{1,16}$/.test(fileKey) ? `${fileKey}-` : ''
     const sanitizedText = cleanedText.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '_')
-    const audioFileName = `${timestamp}-${sanitizedText}.mp3`
+    const audioFileName = `${timestamp}-${keyPart}${sanitizedText}.mp3`
 
     // Determine upload directory based on type
     const uploadDir = 'public/audio'
@@ -227,7 +237,7 @@ export async function POST(request: NextRequest) {
       await mkdir(timestampsPath, { recursive: true })
     }
 
-    const timestampsFileName = `${timestamp}-${sanitizedText}.timestamps.json`
+    const timestampsFileName = `${timestamp}-${keyPart}${sanitizedText}.timestamps.json`
     const timestampsFilePath = join(timestampsPath, timestampsFileName)
     
     // Save timestamps data
