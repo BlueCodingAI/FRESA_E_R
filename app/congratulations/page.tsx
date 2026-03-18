@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import MrListings from "@/components/MrListings";
 import StarsBackground from "@/components/StarsBackground";
 import Header from "@/components/Header";
+import { useI18n } from "@/components/I18nProvider";
 
 function CongratulationsContent() {
+  const { locale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showConfetti, setShowConfetti] = useState(true);
@@ -44,11 +46,11 @@ function CongratulationsContent() {
     // Hide confetti after animation
     const timer = setTimeout(() => setShowConfetti(false), 3000);
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [searchParams, locale]);
 
   const fetchChapterData = async (chapterNum: number) => {
     try {
-      const response = await fetch(`/api/chapters/${chapterNum}`);
+      const response = await fetch(`/api/chapters/${chapterNum}`, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         if (data.chapter) {

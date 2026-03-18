@@ -38,7 +38,7 @@ interface Chapter {
 }
 
 export default function ChapterPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const params = useParams();
   const chapterNumber = params?.number ? parseInt(params.number as string) : null;
@@ -128,7 +128,17 @@ export default function ChapterPage() {
       window.removeEventListener("navigateToSection", handleNavigateToSection as EventListener);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [chapterNumber, router]);
+  }, [chapterNumber, router, locale]);
+
+  // If locale changes while quiz is open, refetch localized quiz questions
+  useEffect(() => {
+    if (!chapterNumber) return;
+    if (showQuiz) {
+      setQuizQuestions([]);
+      fetchQuizQuestions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   // Check chapter access when progress is loaded
   useEffect(() => {

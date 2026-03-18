@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { getRequestLocale } from '@/lib/locale-server'
 
 // GET - Get quiz questions for a chapter with proper count
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ number: string }> }
 ) {
   try {
+    const locale = getRequestLocale(request)
     const { number } = await params
     const chapterNumber = parseInt(number)
 
@@ -75,6 +77,7 @@ export async function GET(
 
     // Format questions
     const formattedQuestions = selectedQuestions.map((q: any) => {
+      const useRu = locale === 'ru'
       let optionAudioUrls = q.optionAudioUrls
       let optionTimestampsUrls = q.optionTimestampsUrls
       let incorrectExplanationAudioUrls = q.incorrectExplanationAudioUrls
@@ -109,12 +112,16 @@ export async function GET(
         }
       }
 
+      const question = useRu ? (q.questionRu || q.question) : q.question
+      const options = useRu ? (q.optionsRu && q.optionsRu.length ? q.optionsRu : q.options) : q.options
+      const explanation = useRu ? (q.explanationRu || q.explanation) : q.explanation
+
       return {
         id: q.id,
-        question: q.question,
-        options: q.options,
+        question,
+        options,
         correctAnswer: q.correctAnswer,
-        explanation: q.explanation,
+        explanation,
         questionAudioUrl: q.questionAudioUrl,
         questionTimestampsUrl: q.questionTimestampsUrl,
         optionAudioUrls,

@@ -11,7 +11,7 @@ import { highlightText } from "@/lib/highlightText";
 import { useI18n } from "@/components/I18nProvider";
 
 export default function IntroductionPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [isAnimating, setIsAnimating] = useState(false);
   const [introText, setIntroText] = useState("Hello, future real estate professional. My name is Mr Listings. Welcome to my 63 hour pre-license education course for sales associates, approved by Florida Real Estate Commission.");
@@ -36,7 +36,7 @@ export default function IntroductionPage() {
         sessionStorage.removeItem('searchHighlight');
       }, 5000); // Clear after 5 seconds
     }
-  }, []);
+  }, [locale]);
 
   const fetchUserProgress = async () => {
     try {
@@ -68,7 +68,7 @@ export default function IntroductionPage() {
   const fetchIntroduction = async () => {
     try {
       // Use public API route that doesn't require authentication
-      const response = await fetch("/api/introduction");
+      const response = await fetch("/api/introduction", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         if (data.introduction) {
@@ -86,7 +86,7 @@ export default function IntroductionPage() {
 
   const fetchAllChapters = async () => {
     try {
-      const response = await fetch("/api/chapters");
+      const response = await fetch("/api/chapters", { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         setAllChapters(data.chapters || []);
