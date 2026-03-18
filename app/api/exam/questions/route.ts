@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
+import { getRequestLocale } from '@/lib/locale-server'
 
 // GET - Get all questions for Practice/End-of-Course Exam
 export async function GET(request: NextRequest) {
   try {
+    const locale = getRequestLocale(request)
     const token =
       request.headers.get('authorization')?.replace('Bearer ', '') ||
       request.cookies.get('auth-token')?.value
@@ -55,12 +57,14 @@ export async function GET(request: NextRequest) {
         }
         const selected = shuffled.slice(0, Math.min(questionCount, chapterQuestions.length))
 
-        selectedQuestions.push(...selected.map((q) => ({
+        selectedQuestions.push(...selected.map((q) => {
+          const useRu = locale === 'ru'
+          return ({
           id: q.id,
-          question: q.question,
-          options: q.options,
+          question: useRu ? (q.questionRu || q.question) : q.question,
+          options: useRu ? ((q.optionsRu && q.optionsRu.length) ? q.optionsRu : q.options) : q.options,
           correctAnswer: q.correctAnswer,
-          explanation: q.explanation,
+          explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
           questionAudioUrl: q.questionAudioUrl,
           questionTimestampsUrl: q.questionTimestampsUrl,
           optionAudioUrls: q.optionAudioUrls,
@@ -71,7 +75,8 @@ export async function GET(request: NextRequest) {
           incorrectExplanationTimestampsUrls: q.incorrectExplanationTimestampsUrls,
           source: 'chapter',
           chapterNumber: chapter.number,
-        })))
+        })
+        }))
       }
     }
 
@@ -81,12 +86,14 @@ export async function GET(request: NextRequest) {
     })
 
     // Add all additional questions
-    selectedQuestions.push(...additionalQuestions.map((q) => ({
+    selectedQuestions.push(...additionalQuestions.map((q) => {
+      const useRu = locale === 'ru'
+      return ({
       id: q.id,
-      question: q.question,
-      options: q.options,
+      question: useRu ? (q.questionRu || q.question) : q.question,
+      options: useRu ? ((q.optionsRu && q.optionsRu.length) ? q.optionsRu : q.options) : q.options,
       correctAnswer: q.correctAnswer,
-      explanation: q.explanation,
+      explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
       questionAudioUrl: q.questionAudioUrl,
       questionTimestampsUrl: q.questionTimestampsUrl,
       optionAudioUrls: q.optionAudioUrls,
@@ -96,7 +103,8 @@ export async function GET(request: NextRequest) {
       incorrectExplanationAudioUrls: q.incorrectExplanationAudioUrls,
       incorrectExplanationTimestampsUrls: q.incorrectExplanationTimestampsUrls,
       source: 'additional',
-    })))
+    })
+    }))
 
     // Shuffle all questions together using Fisher-Yates algorithm
     const shuffledAll = [...selectedQuestions];

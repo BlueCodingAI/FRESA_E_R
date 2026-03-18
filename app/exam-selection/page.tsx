@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import StarsBackground from "@/components/StarsBackground";
 import AuthGuard from "@/components/AuthGuard";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function ExamSelectionPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     setMounted(true);
@@ -36,10 +38,10 @@ export default function ExamSelectionPage() {
             {/* Header */}
             <div className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-300 to-red-400 mb-4">
-                Choose Your Exam
+                {t("exam.chooseTitle")}
               </h1>
               <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">
-                You've completed all chapters! Select an exam to continue.
+                {t("exam.chooseSubtitle")}
               </p>
             </div>
 
@@ -50,9 +52,9 @@ export default function ExamSelectionPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <div className="flex-1">
-                  <p className="text-yellow-200 font-semibold text-lg md:text-xl mb-2">Important Notice</p>
+                  <p className="text-yellow-200 font-semibold text-lg md:text-xl mb-2">{t("quiz.important")}</p>
                   <p className="text-gray-300 text-base md:text-lg leading-relaxed">
-                    If you fail the End-of-Course Exam, you must wait <span className="font-bold text-white">30 days</span> before you can retake it (State Law requirement).
+                    {t("quiz.eocWaitNotice")}
                   </p>
                 </div>
               </div>
@@ -68,15 +70,15 @@ export default function ExamSelectionPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                     </svg>
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Practice Exam</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">{t("practice.title")}</h2>
                   <p className="text-gray-300 text-sm md:text-base mb-6 leading-relaxed">
-                    Take a practice exam to prepare for the End-of-Course Exam. You can retake this as many times as needed.
+                    {t("exam.practiceDesc")}
                   </p>
                   <button
                     onClick={handleGoToPracticeExam}
                     className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
                   >
-                    Start Practice Exam
+                    {t("exam.startPractice")}
                   </button>
                 </div>
               </div>
@@ -89,15 +91,15 @@ export default function ExamSelectionPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                     </svg>
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">End-of-Course Exam</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">{t("eoc.title")}</h2>
                   <p className="text-gray-300 text-sm md:text-base mb-6 leading-relaxed">
-                    Take the official End-of-Course Exam. Passing score is 70%. If you fail, you must wait 30 days before retaking.
+                    {t("exam.eocDesc")}
                   </p>
                   <button
                     onClick={handleGoToEndOfCourseExam}
                     className="w-full py-4 px-6 bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500 hover:from-yellow-500 hover:via-orange-400 hover:to-red-400 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-yellow-500/30 hover:shadow-yellow-500/50"
                   >
-                    Start End-of-Course Exam
+                    {t("exam.startEoc")}
                   </button>
                 </div>
               </div>

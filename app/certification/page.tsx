@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import StarsBackground from "@/components/StarsBackground";
 import AuthGuard from "@/components/AuthGuard";
 import { loadStripe } from "@stripe/stripe-js";
+import { useI18n } from "@/components/I18nProvider";
 
 // Initialize Stripe - will be undefined if key is not set
 let stripePromise: Promise<any> | null = null;
@@ -27,6 +28,7 @@ interface CertificatePayment {
 
 export default function CertificationPage() {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<CertificatePayment | null>(null);
@@ -186,7 +188,7 @@ export default function CertificationPage() {
       const certificateElement = document.getElementById("certificate");
       if (!certificateElement) {
         if (!autoDownload) {
-          alert("Certificate not found");
+          alert(t("common.loading"));
         }
         return;
       }
@@ -238,7 +240,7 @@ export default function CertificationPage() {
     } catch (err) {
       console.error("Error generating PDF:", err);
       if (!autoDownload) {
-        alert("Failed to generate PDF. Please try again.");
+        alert(t("admin.saveFailed"));
       }
     } finally {
       setDownloading(false);
@@ -253,7 +255,7 @@ export default function CertificationPage() {
           <Header />
           <StarsBackground />
           <div className="flex items-center justify-center min-h-screen">
-            <div className="text-white text-xl">Loading...</div>
+            <div className="text-white text-xl">{t("common.loading")}</div>
           </div>
         </main>
       </AuthGuard>
@@ -275,10 +277,10 @@ export default function CertificationPage() {
             {/* Header */}
             <div className="text-center mb-8 md:mb-12">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-300 to-red-400 mb-4">
-                Your Certificate
+                {t("cert.title")}
               </h1>
               <p className="text-gray-300 text-lg md:text-xl">
-                Download your official completion certificate
+                {t("cert.subtitle")}
               </p>
             </div>
 
@@ -311,10 +313,10 @@ export default function CertificationPage() {
                   {/* Certificate Header */}
                   <div className="mb-6">
                     <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-yellow-800 mb-2">
-                      Certificate of Completion
+                      {t("cert.header")}
                     </h2>
                     <p className="text-lg md:text-xl text-gray-700">
-                      Florida Listings Real Estate School Certifies that
+                      {t("cert.certifies")}
                     </p>
                   </div>
 
@@ -326,7 +328,7 @@ export default function CertificationPage() {
                       </h3>
                     </div>
                     <p className="text-lg md:text-xl text-gray-700">
-                      has completed the 63 hours pre licensing course for real estate Sales Associates, and is now qualified to take the Florida State Exam
+                      {t("cert.completed")}
                     </p>
                   </div>
 
@@ -334,20 +336,20 @@ export default function CertificationPage() {
                   <div className="mt-10 md:mt-14 grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 max-w-xl mx-auto">
                     <div>
                       <div className="border-t-2 border-gray-400 pt-4 mt-8">
-                        <p className="text-gray-600 font-semibold">Date</p>
+                        <p className="text-gray-600 font-semibold">{t("cert.date")}</p>
                         <p className="text-gray-800 text-lg mt-2">
-                          {new Date().toLocaleDateString("en-US", {
+                          {new Intl.DateTimeFormat(locale === "ru" ? "ru-RU" : "en-US", {
                             year: "numeric",
                             month: "long",
                             day: "numeric",
                             timeZone: "America/New_York",
-                          })}
+                          }).format(new Date())}
                         </p>
                       </div>
                     </div>
                     <div>
                       <div className="border-t-2 border-gray-400 pt-4 mt-8">
-                        <p className="text-gray-600 font-semibold">Certificate ID</p>
+                        <p className="text-gray-600 font-semibold">{t("cert.id")}</p>
                         <p className="text-gray-800 text-lg mt-2 font-mono">
                           {paymentStatus?.id?.slice(0, 8).toUpperCase() || user?.id?.slice(0, 8).toUpperCase() || "—"}
                         </p>
@@ -380,21 +382,21 @@ export default function CertificationPage() {
                     </svg>
                   </div>
                   <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                    Your Certificate
+                    {t("cert.downloadTitle")}
                   </h3>
                   <p className="text-gray-300 text-base md:text-lg mb-6">
-                    Download your official PDF certificate
+                    {t("cert.downloadSubtitle")}
                   </p>
                   <button
                     onClick={() => downloadPDF(false)}
                     disabled={!canDownload}
                     className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold text-lg md:text-xl rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/50 hover:shadow-blue-500/70 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {downloading ? "Generating PDF..." : "📥 Download PDF Certificate"}
+                    {downloading ? t("cert.generating") : t("cert.downloadBtn")}
                   </button>
                   {!paymentStatus?.pdfDownloaded && (
                     <p className="text-sm text-gray-400 mt-2">
-                      Your certificate is ready to download anytime
+                      {t("cert.readyAnytime")}
                     </p>
                   )}
                 </div>

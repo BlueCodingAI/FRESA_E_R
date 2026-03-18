@@ -6,7 +6,7 @@ import type { Locale } from "@/lib/i18n";
 import { FlagRussia, FlagUS } from "@/components/LocaleFlagIcons";
 import { useI18n } from "@/components/I18nProvider";
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ flagsOnly }: { flagsOnly?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { t, locale, setLocale: setCtxLocale } = useI18n();
@@ -50,26 +50,30 @@ export default function LanguageSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 min-w-[11.5rem] bg-[#1a1f3a] border border-cyan-500/30 rounded-xl shadow-2xl overflow-hidden z-[80]">
+        <div
+          className={`absolute right-0 mt-2 bg-[#1a1f3a] border border-cyan-500/30 rounded-xl shadow-2xl overflow-hidden z-[80] ${
+            flagsOnly ? "min-w-[4rem]" : "min-w-[11.5rem]"
+          }`}
+        >
           <button
             type="button"
             onClick={() => applyLocale("en")}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+            className={`w-full flex items-center ${flagsOnly ? "justify-center px-3 py-3" : "gap-3 px-4 py-3 text-left"} transition-colors ${
               locale === "en" ? "bg-cyan-500/10 text-cyan-300" : "text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-300"
             }`}
           >
             <FlagUS />
-            <span className="font-medium tracking-tight">{t("lang.menu_us")}</span>
+            {!flagsOnly && <span className="font-medium tracking-tight">{t("lang.menu_us")}</span>}
           </button>
           <button
             type="button"
             onClick={() => applyLocale("ru")}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+            className={`w-full flex items-center ${flagsOnly ? "justify-center px-3 py-3" : "gap-3 px-4 py-3 text-left"} transition-colors ${
               locale === "ru" ? "bg-cyan-500/10 text-cyan-300" : "text-gray-200 hover:bg-cyan-500/10 hover:text-cyan-300"
             }`}
           >
             <FlagRussia />
-            <span className="font-medium tracking-tight">{t("lang.menu_ru")}</span>
+            {!flagsOnly && <span className="font-medium tracking-tight">{t("lang.menu_ru")}</span>}
           </button>
         </div>
       )}

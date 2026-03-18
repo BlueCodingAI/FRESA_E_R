@@ -6,16 +6,19 @@ import Header from "@/components/Header";
 import StarsBackground from "@/components/StarsBackground";
 import Quiz, { QuizQuestion } from "@/components/Quiz";
 import AuthGuard from "@/components/AuthGuard";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function PracticeExamPage() {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [quizRetryKey, setQuizRetryKey] = useState(0);
 
   useEffect(() => {
     fetchQuestions();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const getToken = () => {
     return document.cookie
@@ -103,7 +106,7 @@ export default function PracticeExamPage() {
           <Header />
           <StarsBackground />
           <div className="flex items-center justify-center min-h-screen">
-            <div className="text-white text-xl">Loading Practice Exam...</div>
+            <div className="text-white text-xl">{t("practice.loading")}</div>
           </div>
         </main>
       </AuthGuard>
@@ -119,7 +122,7 @@ export default function PracticeExamPage() {
           {questions.length > 0 && (
             <>
               <h1 className="text-3xl md:text-4xl font-bold text-center mb-8 text-white">
-                Practice Exam
+                {t("practice.title")}
               </h1>
               <Quiz 
                 key={quizRetryKey}
@@ -129,7 +132,7 @@ export default function PracticeExamPage() {
                 onRetry={handleRetry}
                 onContinue={handleGoToEndOfCourse}
                 onPracticeAgain={handlePracticeAgain}
-                retryButtonText="Take Practice Quiz Again"
+                retryButtonText={t("quiz.takePracticeAgain")}
                 shuffleKey={quizRetryKey}
               />
             </>

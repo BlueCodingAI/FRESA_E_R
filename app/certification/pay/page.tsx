@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import StarsBackground from "@/components/StarsBackground";
 import AuthGuard from "@/components/AuthGuard";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function CertificationPayPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [processingPayment, setProcessingPayment] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -84,7 +86,7 @@ export default function CertificationPayPage() {
           <Header />
           <StarsBackground />
           <div className="flex items-center justify-center min-h-screen">
-            <div className="text-white text-xl">Loading...</div>
+            <div className="text-white text-xl">{t("common.loading")}</div>
           </div>
         </main>
       </AuthGuard>
@@ -107,17 +109,17 @@ export default function CertificationPayPage() {
                     </svg>
                   </div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-                    Certificate Payment
+                    {t("cert.payTitle")}
                   </h1>
                   <p className="text-gray-300 text-base md:text-lg mb-4">
-                    Pay $200 to receive your Certificate of Completion
+                    {t("certPay.subtitle")}
                   </p>
                   <p className="text-gray-400 text-sm mb-4">
-                    After payment you will be able to view and download your official certificate.
+                    {t("certPay.after")}
                   </p>
                   <div className="bg-blue-500/20 border border-blue-400/50 rounded-lg p-4 mb-6">
                     <p className="text-blue-200 text-sm md:text-base">
-                      <span className="font-semibold">Included:</span> Official PDF certificate, verification, lifetime access
+                      <span className="font-semibold">{t("certPay.included")}</span> {t("certPay.includedList")}
                     </p>
                   </div>
                   <button
@@ -125,7 +127,7 @@ export default function CertificationPayPage() {
                     disabled={processingPayment}
                     className="w-full py-4 px-6 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 hover:from-yellow-400 hover:via-orange-400 hover:to-red-400 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {processingPayment ? "Processing..." : "Pay $200"}
+                    {processingPayment ? t("certPay.processing") : t("quiz.pay200")}
                   </button>
                 </div>
               </div>

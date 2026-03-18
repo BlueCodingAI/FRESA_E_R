@@ -6,9 +6,11 @@ import Header from "@/components/Header";
 import StarsBackground from "@/components/StarsBackground";
 import Quiz, { QuizQuestion } from "@/components/Quiz";
 import AuthGuard from "@/components/AuthGuard";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function EndOfCourseExamPage() {
   const router = useRouter();
+  const { t, locale } = useI18n();
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [showQuiz, setShowQuiz] = useState(true);
@@ -23,7 +25,8 @@ export default function EndOfCourseExamPage() {
 
   useEffect(() => {
     checkCompletion();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
 
   const getToken = () => {
     return document.cookie
@@ -191,7 +194,7 @@ export default function EndOfCourseExamPage() {
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mb-4"></div>
               <div className="text-white text-xl font-semibold">
-                {checkingCompletion ? "Checking completion status..." : "Loading End-of-Course Exam..."}
+                {checkingCompletion ? t("eoc.checking") : t("eoc.loading")}
               </div>
             </div>
           </div>
@@ -214,16 +217,16 @@ export default function EndOfCourseExamPage() {
                 </svg>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400 mb-4">
-                Exam Not Available
+                {t("eoc.notAvailableTitle")}
               </h2>
               <p className="text-gray-300 text-lg mb-8 leading-relaxed">
-                You must complete all {totalChapters !== null ? totalChapters : "available"} chapters before taking the End-of-Course Exam.
+                {t("eoc.mustCompleteAll", { n: totalChapters !== null ? totalChapters : t("common.loading") })}
               </p>
               <button
                 onClick={() => router.push("/")}
                 className="px-6 py-3 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500 hover:from-blue-600 hover:via-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-500/30"
               >
-                Go to Home
+                {t("eoc.goHome")}
               </button>
             </div>
           </div>
@@ -246,31 +249,31 @@ export default function EndOfCourseExamPage() {
                 </svg>
               </div>
               <h2 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-400 mb-3">
-                30-day wait required
+                {t("eoc.lockTitle")}
               </h2>
               <p className="text-gray-300 text-lg mb-4 leading-relaxed">
-                You must wait <span className="text-amber-300 font-semibold">{daysRemaining} day{daysRemaining !== 1 ? "s" : ""}</span> before you can take the End-of-Course Exam again. This follows Florida Administrative Code (DBPR Real Estate Commission): students who fail the end-of-course examination must wait at least 30 days before retesting.
+                {t("eoc.lockBody", { days: daysRemaining, s: daysRemaining !== 1 ? "s" : "" })}
               </p>
               {nextEligibleDate && (
                 <p className="text-cyan-300 text-base mb-6">
-                  The next day you can take the End-of-Course Exam will be <strong>{nextEligibleDate}</strong>.
+                  {t("eoc.nextEligible", { date: nextEligibleDate })}
                 </p>
               )}
               <p className="text-gray-400 text-sm mb-6">
-                We recommend using this time to ace the Practice Exam—it will help you pass the End-of-Course Exam and prepare for the Florida State Exam.
+                {t("eoc.recommendPractice")}
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <button
                   onClick={() => router.push("/practice-exam")}
                   className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/30"
                 >
-                  Take the Practice Exam
+                  {t("quiz.takePracticeExam")}
                 </button>
                 <button
                   onClick={() => router.push("/")}
                   className="px-6 py-3 bg-white/10 border border-white/20 hover:bg-white/15 text-gray-200 font-medium rounded-xl transition-all"
                 >
-                  Back to Home
+                  {t("common.backHome")}
                 </button>
               </div>
             </div>
@@ -299,10 +302,10 @@ export default function EndOfCourseExamPage() {
                     </div>
                   </div>
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-300 to-red-400 mb-3">
-                    End-Of-Course Exam
+                    {t("eoc.title")}
                   </h1>
                   <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">
-                    Final assessment to demonstrate your mastery of the course material
+                    {t("eoc.subtitle")}
                   </p>
                 </div>
               )}
