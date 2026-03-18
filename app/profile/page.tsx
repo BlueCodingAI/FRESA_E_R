@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import AuthGuard from "@/components/AuthGuard";
 import StarsBackground from "@/components/StarsBackground";
+import { useI18n } from "@/components/I18nProvider";
 
 interface User {
   id: string;
@@ -17,6 +18,7 @@ interface User {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -74,7 +76,7 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Error fetching user:", err);
-      setError("Failed to load profile");
+      setError(t("profile.loadFail"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function ProfilePage() {
         ?.split("=")[1];
 
       if (!token) {
-        setError("Not authenticated");
+        setError(t("profile.notAuth"));
         setSaving(false);
         return;
       }
@@ -124,7 +126,7 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess("Profile updated successfully!");
+        setSuccess(t("profile.updated"));
         setUser(data.user);
         setEditing(false);
         // Refresh the page after a short delay to show success message
@@ -132,11 +134,11 @@ export default function ProfilePage() {
           fetchUser();
         }, 1000);
       } else {
-        setError(data.error || "Failed to update profile");
+        setError(data.error || t("profile.updateFail"));
       }
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError("Failed to update profile");
+      setError(t("profile.updateFail"));
     } finally {
       setSaving(false);
     }
@@ -155,34 +157,34 @@ export default function ProfilePage() {
         ?.split("=")[1];
 
       if (!token) {
-        setError("Not authenticated");
+        setError(t("profile.notAuth"));
         setSaving(false);
         return;
       }
 
       // Validate password fields
       if (!formData.currentPassword) {
-        setError("Current password is required");
+        setError(t("profile.currentPwReq"));
         setSaving(false);
         return;
       }
       if (!formData.newPassword) {
-        setError("New password is required");
+        setError(t("profile.newPwReq"));
         setSaving(false);
         return;
       }
       if (formData.newPassword.length < 6) {
-        setError("New password must be at least 6 characters");
+        setError(t("profile.newPwLen"));
         setSaving(false);
         return;
       }
       if (formData.newPassword !== formData.confirmPassword) {
-        setError("New passwords do not match");
+        setError(t("profile.newPwNoMatch"));
         setSaving(false);
         return;
       }
       if (formData.currentPassword === formData.newPassword) {
-        setError("New password must be different from current password");
+        setError(t("profile.newPwDifferent"));
         setSaving(false);
         return;
       }
@@ -206,7 +208,7 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (response.ok) {
-        setSuccess("Password changed successfully!");
+        setSuccess(t("profile.pwChanged"));
         setFormData((prev) => ({
           ...prev,
           currentPassword: "",
@@ -218,11 +220,11 @@ export default function ProfilePage() {
           setSuccess("");
         }, 3000);
       } else {
-        setError(data.error || "Failed to change password");
+        setError(data.error || t("profile.pwChangeFail"));
       }
     } catch (err) {
       console.error("Error changing password:", err);
-      setError("Failed to change password");
+      setError(t("profile.pwChangeFail"));
     } finally {
       setSaving(false);
     }
@@ -250,7 +252,7 @@ export default function ProfilePage() {
           <Header />
           <StarsBackground />
           <div className="relative z-10 min-h-screen flex items-center justify-center pt-20 pb-8 px-4 sm:px-6 md:px-8 md:ml-64 md:pt-24">
-            <div className="text-white text-xl">Loading profile...</div>
+            <div className="text-white text-xl">{t("profile.loading")}</div>
           </div>
         </main>
       </AuthGuard>
@@ -268,9 +270,9 @@ export default function ProfilePage() {
             {/* Page Header */}
             <div className="mb-6 md:mb-8">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-400 mb-2">
-                My Profile
+                {t("profile.myProfile")}
               </h1>
-              <p className="text-gray-400 text-sm sm:text-base">Manage your account information and settings</p>
+              <p className="text-gray-400 text-sm sm:text-base">{t("profile.subtitle")}</p>
             </div>
 
             {/* Error/Success Messages */}
@@ -312,7 +314,7 @@ export default function ProfilePage() {
                         }}
                         className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-lg transition-all text-sm sm:text-base"
                       >
-                        Change Password
+                        {t("profile.changePassword")}
                       </button>
                       <button
                         onClick={() => {
@@ -323,7 +325,7 @@ export default function ProfilePage() {
                         }}
                         className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg transition-all text-sm sm:text-base"
                       >
-                        Edit Profile
+                        {t("profile.editProfile")}
                       </button>
                     </div>
                   </div>
@@ -331,20 +333,20 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       <div className="p-3 sm:p-4 bg-[#0a1a2e]/50 rounded-lg border border-blue-500/20 min-w-0">
-                        <label className="text-gray-400 text-sm mb-1 block">Email</label>
+                        <label className="text-gray-400 text-sm mb-1 block">{t("profile.email")}</label>
                         <p className="text-white font-medium break-all">{user?.email}</p>
                       </div>
                       <div className="p-3 sm:p-4 bg-[#0a1a2e]/50 rounded-lg border border-blue-500/20 min-w-0">
-                        <label className="text-gray-400 text-sm mb-1 block">Username</label>
+                        <label className="text-gray-400 text-sm mb-1 block">{t("profile.username")}</label>
                         <p className="text-white font-medium break-all">{user?.username}</p>
                       </div>
                       <div className="p-3 sm:p-4 bg-[#0a1a2e]/50 rounded-lg border border-blue-500/20 min-w-0">
-                        <label className="text-gray-400 text-sm mb-1 block">Phone</label>
-                        <p className="text-white font-medium">{user?.phone || "Not provided"}</p>
+                        <label className="text-gray-400 text-sm mb-1 block">{t("profile.phone")}</label>
+                        <p className="text-white font-medium">{user?.phone || t("profile.notProvided")}</p>
                       </div>
                       <div className="p-3 sm:p-4 bg-[#0a1a2e]/50 rounded-lg border border-blue-500/20 min-w-0">
-                        <label className="text-gray-400 text-sm mb-1 block">Member Since</label>
-                        <p className="text-white font-medium">Active User</p>
+                        <label className="text-gray-400 text-sm mb-1 block">{t("profile.memberSince")}</label>
+                        <p className="text-white font-medium">{t("profile.activeUser")}</p>
                       </div>
                     </div>
                   </div>
@@ -355,7 +357,7 @@ export default function ProfilePage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                     <div>
                       <h3 className="text-lg sm:text-xl font-bold text-white">Change Password</h3>
-                      <p className="text-gray-400 text-sm mt-1">Update your password to keep your account secure</p>
+                      <p className="text-gray-400 text-sm mt-1">{t("profile.pwSubtitle")}</p>
                     </div>
                     <button
                       type="button"
@@ -373,14 +375,14 @@ export default function ProfilePage() {
                       }}
                       className="w-full sm:w-auto px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all order-first sm:order-none"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
 
                   <div className="space-y-4">
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Current Password *
+                        {t("profile.currentPw")} *
                       </label>
                       <input
                         type="password"
@@ -389,13 +391,13 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter your current password"
+                        placeholder={t("profile.enterCurrentPw")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        New Password *
+                        {t("profile.newPw")} *
                       </label>
                       <input
                         type="password"
@@ -405,14 +407,14 @@ export default function ProfilePage() {
                         required
                         minLength={6}
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter new password (minimum 6 characters)"
+                        placeholder={t("profile.enterNewPw")}
                       />
-                      <p className="text-gray-500 text-xs mt-1">Password must be at least 6 characters long</p>
+                      <p className="text-gray-500 text-xs mt-1">{t("profile.pwAtLeast6")}</p>
                     </div>
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Confirm New Password *
+                        {t("profile.confirmPw")} *
                       </label>
                       <input
                         type="password"
@@ -421,7 +423,7 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Confirm your new password"
+                        placeholder={t("profile.confirmNewPw")}
                       />
                     </div>
                   </div>
@@ -432,7 +434,7 @@ export default function ProfilePage() {
                       disabled={saving}
                       className="w-full sm:flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
                     >
-                      {saving ? "Changing Password..." : "Change Password"}
+                      {saving ? t("profile.pwChanging") : t("profile.changePassword")}
                     </button>
                     <button
                       type="button"
@@ -450,7 +452,7 @@ export default function ProfilePage() {
                       }}
                       className="w-full sm:w-auto px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </form>
@@ -458,7 +460,7 @@ export default function ProfilePage() {
                 /* Edit Mode */
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                    <h3 className="text-lg sm:text-xl font-bold text-white">Edit Profile</h3>
+                    <h3 className="text-lg sm:text-xl font-bold text-white">{t("profile.editProfile")}</h3>
                     <button
                       type="button"
                       onClick={() => {
@@ -470,14 +472,14 @@ export default function ProfilePage() {
                       }}
                       className="w-full sm:w-auto px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all order-first sm:order-none"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Full Name *
+                        {t("profile.fullName")} *
                       </label>
                       <input
                         type="text"
@@ -486,13 +488,13 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter your full name"
+                        placeholder={t("profile.enterFullName")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Username *
+                        {t("profile.username")} *
                       </label>
                       <input
                         type="text"
@@ -502,13 +504,13 @@ export default function ProfilePage() {
                         required
                         minLength={3}
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter username"
+                        placeholder={t("profile.enterUsername")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Email Address *
+                        {t("profile.emailAddr")} *
                       </label>
                       <input
                         type="email"
@@ -517,13 +519,13 @@ export default function ProfilePage() {
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter email address"
+                        placeholder={t("profile.enterEmail")}
                       />
                     </div>
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Phone Number
+                        {t("profile.phoneNumber")}
                       </label>
                       <input
                         type="tel"
@@ -531,7 +533,7 @@ export default function ProfilePage() {
                         value={formData.phone}
                         onChange={handleInputChange}
                         className="w-full px-4 py-2.5 bg-[#0a1a2e]/50 border border-blue-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all"
-                        placeholder="Enter phone number"
+                        placeholder={t("profile.enterPhone")}
                       />
                     </div>
                   </div>
@@ -543,7 +545,7 @@ export default function ProfilePage() {
                       disabled={saving}
                       className="w-full sm:flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
                     >
-                      {saving ? "Saving..." : "Save Changes"}
+                      {saving ? t("profile.saving") : t("profile.saveChanges")}
                     </button>
                     <button
                       type="button"
@@ -556,7 +558,7 @@ export default function ProfilePage() {
                       }}
                       className="w-full sm:w-auto px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg transition-all"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 </form>
