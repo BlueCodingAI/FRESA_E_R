@@ -119,7 +119,7 @@ export default function Header() {
             )}
             {/* Mobile: Language switcher in top bar (near search) */}
             <div className="[&_button]:!p-2 [&_button]:!border [&_button]:!border-cyan-500/30 [&_button]:!rounded-lg [&_button]:!text-cyan-400 [&_button]:hover:!bg-cyan-500/10 [&_button]:!transition-all [&_button]:!bg-transparent [&_span]:!hidden [&_kbd]:!hidden [&_svg]:!w-6 [&_svg]:!h-6">
-              <LanguageSwitcher flagsOnly />
+              <LanguageSwitcher flagsOnly compactTrigger />
             </div>
             {/* Hamburger Menu Button */}
             <button

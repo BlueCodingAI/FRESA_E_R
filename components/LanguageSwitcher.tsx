@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 import { useI18n } from "@/components/I18nProvider";
 
-export default function LanguageSwitcher({ flagsOnly }: { flagsOnly?: boolean }) {
+export default function LanguageSwitcher({
+  flagsOnly,
+  compactTrigger,
+}: {
+  flagsOnly?: boolean;
+  compactTrigger?: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { t, locale, setLocale: setCtxLocale } = useI18n();
@@ -33,7 +39,9 @@ export default function LanguageSwitcher({ flagsOnly }: { flagsOnly?: boolean })
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="px-3 py-2 rounded-lg border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all bg-transparent text-sm font-semibold tracking-wide"
+        className={`rounded-lg border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-all bg-transparent font-semibold tracking-wide ${
+          compactTrigger ? "w-[42px] h-[42px] p-0 text-xs" : "px-3 py-2 text-sm"
+        }`}
         aria-label={t("lang.switch")}
         title={t("lang.switch")}
       >
