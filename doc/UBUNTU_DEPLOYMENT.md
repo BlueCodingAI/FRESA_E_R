@@ -76,40 +76,11 @@ ALTER DATABASE e_course OWNER TO e_course_user;
 
 ## Step 4: Install Python and Whisper Dependencies
 
-### Install Python 3.10+
+✅ **Not required for this project anymore.**
 
-```bash
-# Install Python and pip
-sudo apt install -y python3 python3-pip python3-venv
+This project generates audio **and** word-level timestamps using **Inworld TTS**, so you do **not** need Whisper/Python/FFmpeg on the server.
 
-# Verify installation
-python3 --version  # Should show 3.10 or higher
-pip3 --version
-```
-
-### Install FFmpeg (Required for Whisper)
-
-```bash
-sudo apt install -y ffmpeg
-
-# Verify installation
-ffmpeg -version
-```
-
-### Install Whisper Dependencies
-
-```bash
-# Install Whisper and PyTorch
-pip3 install --upgrade pip
-pip3 install torch>=2.0.0
-pip3 install whisper-timestamped>=1.14.0
-pip3 install openai-whisper>=20231117
-
-# Verify installation
-python3 -c "import whisper_timestamped; print('Whisper installed successfully')"
-```
-
-**Note:** If you have an NVIDIA GPU, PyTorch will automatically use CUDA for faster processing.
+You can skip this step entirely.
 
 ---
 
@@ -150,26 +121,37 @@ cp env.template .env
 nano .env  # or use your preferred editor
 ```
 
-### Required Environment Variables
+### Required Environment Variables (Production)
+
+Use `env.template` as the source of truth. At minimum you must set:
 
 ```env
-# Database Configuration
+# Database
 DATABASE_URL="postgresql://e_course_user:your_secure_password_here@localhost:5432/e_course?schema=public"
 
-# JWT Secret (Generate a secure random string)
+# Auth
 JWT_SECRET="your-super-secret-jwt-key-minimum-32-characters-long"
 
-# ElevenLabs API Configuration
-ELEVENLABS_API_KEY="your-elevenlabs-api-key-here"
-ELEVENLABS_MAN_VOICE_ID="nPczCjzI2devNBz1zQrb"
-ELEVENLABS_WOMAN_VOICE_ID="GP1bgf0sjoFuuHkyrg8E"
+# Inworld TTS (audio + word timestamps)
+INWORLD_API_KEY="base64(workspace_id:api_key)"
+INWORLD_EN_VOICE_ID="Dennis"
+INWORLD_RU_VOICE_ID="Dennis"
+# (Quiz voice)
+INWORLD_WOMAN_VOICE_ID="Dennis"
 
-# AssemblyAI API Configuration (for accurate timestamp generation)
-ASSEMBLYAI_API_KEY="your-assemblyai-api-key-here"
+# Admin translation buttons (EN↔RU)
+OPENAI_API_KEY="sk-..."
 
-# Node Environment
+# Public URL (used in emails/links)
+SITE_URL="https://your-domain.com"
+
+# Node
 NODE_ENV="production"
 ```
+
+**If you use certificate payments**, also set your Stripe variables (see your `env.template` / server secrets).
+
+**If you use email verification / password reset / contact**, set `SMTP_*` variables in `.env`.
 
 ### Generate JWT Secret
 
@@ -195,9 +177,6 @@ npm run db:generate
 ```bash
 # Run migrations to create all tables
 npx prisma migrate deploy
-
-# Or if using dev migrations:
-npx prisma migrate dev
 ```
 
 ### Seed Initial Data (Optional)

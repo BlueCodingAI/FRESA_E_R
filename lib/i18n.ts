@@ -3,7 +3,7 @@ import { SITE_EN, SITE_RU } from "./site-messages";
 export type Locale = "en" | "ru";
 
 export const LOCALES: readonly Locale[] = ["en", "ru"] as const;
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "ru";
 export const LOCALE_COOKIE = "site-locale";
 
 export function isLocale(value: unknown): value is Locale {

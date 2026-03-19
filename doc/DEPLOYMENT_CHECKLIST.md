@@ -7,7 +7,8 @@ Use this checklist when deploying to Ubuntu server.
 - [ ] Server has Ubuntu 20.04+ installed
 - [ ] SSH access configured
 - [ ] Domain name pointed to server IP (if using domain)
-- [ ] ElevenLabs API key ready
+- [ ] Inworld API key ready (Base64 workspace_id:api_key)
+- [ ] OpenAI API key ready (for admin translate buttons)
 - [ ] Database credentials ready
 
 ## Installation Steps
@@ -17,8 +18,6 @@ Use this checklist when deploying to Ubuntu server.
 - [ ] Node.js 20.x installed (`node --version`)
 - [ ] npm installed (`npm --version`)
 - [ ] PostgreSQL installed and running
-- [ ] Python 3.10+ installed (`python3 --version`)
-- [ ] FFmpeg installed (`ffmpeg -version`)
 
 ### 2. Database Setup
 - [ ] PostgreSQL service started
@@ -26,9 +25,10 @@ Use this checklist when deploying to Ubuntu server.
 - [ ] User `e_course_user` created with password
 - [ ] Permissions granted
 
-### 3. Python/Whisper Setup
-- [ ] `pip3 install torch whisper-timestamped openai-whisper`
-- [ ] Whisper verified: `python3 -c "import whisper_timestamped; print('OK')"`
+### 3. Audio / Translation Setup
+- [ ] `.env` contains `INWORLD_API_KEY`
+- [ ] `.env` contains `INWORLD_EN_VOICE_ID` + `INWORLD_RU_VOICE_ID`
+- [ ] `.env` contains `OPENAI_API_KEY` (if you want Translate buttons in admin)
 
 ### 4. Application Setup
 - [ ] Project cloned/uploaded to server
@@ -36,9 +36,10 @@ Use this checklist when deploying to Ubuntu server.
 - [ ] `.env` file created with all variables:
   - [ ] `DATABASE_URL`
   - [ ] `JWT_SECRET` (32+ characters)
-  - [ ] `ELEVENLABS_API_KEY`
-  - [ ] `ELEVENLABS_MAN_VOICE_ID`
-  - [ ] `ELEVENLABS_WOMAN_VOICE_ID`
+- [ ] `INWORLD_API_KEY`
+- [ ] `INWORLD_EN_VOICE_ID`
+- [ ] `INWORLD_RU_VOICE_ID`
+- [ ] `OPENAI_API_KEY` (optional for translate buttons)
   - [ ] `NODE_ENV=production`
 
 ### 5. Database Migration
