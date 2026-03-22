@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getRequestLocale } from '@/lib/locale-server'
+import { localeQuizAudioFields } from '@/lib/quiz-locale'
 
 // GET - Get all questions for Practice/End-of-Course Exam
 export async function GET(request: NextRequest) {
@@ -57,26 +58,22 @@ export async function GET(request: NextRequest) {
         }
         const selected = shuffled.slice(0, Math.min(questionCount, chapterQuestions.length))
 
-        selectedQuestions.push(...selected.map((q) => {
-          const useRu = locale === 'ru'
-          return ({
-          id: q.id,
-          question: useRu ? (q.questionRu || q.question) : q.question,
-          options: useRu ? ((q.optionsRu && q.optionsRu.length) ? q.optionsRu : q.options) : q.options,
-          correctAnswer: q.correctAnswer,
-          explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
-          questionAudioUrl: q.questionAudioUrl,
-          questionTimestampsUrl: q.questionTimestampsUrl,
-          optionAudioUrls: q.optionAudioUrls,
-          optionTimestampsUrls: q.optionTimestampsUrls,
-          correctExplanationAudioUrl: q.correctExplanationAudioUrl,
-          correctExplanationTimestampsUrl: q.correctExplanationTimestampsUrl,
-          incorrectExplanationAudioUrls: q.incorrectExplanationAudioUrls,
-          incorrectExplanationTimestampsUrls: q.incorrectExplanationTimestampsUrls,
-          source: 'chapter',
-          chapterNumber: chapter.number,
-        })
-        }))
+        selectedQuestions.push(
+          ...selected.map((q) => {
+            const useRu = locale === 'ru'
+            const row = q as unknown as Record<string, unknown>
+            return {
+              id: q.id,
+              question: useRu ? (q.questionRu || q.question) : q.question,
+              options: useRu ? (q.optionsRu && q.optionsRu.length ? q.optionsRu : q.options) : q.options,
+              correctAnswer: q.correctAnswer,
+              explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
+              ...localeQuizAudioFields(row, useRu),
+              source: 'chapter',
+              chapterNumber: chapter.number,
+            }
+          })
+        )
       }
     }
 
@@ -86,25 +83,21 @@ export async function GET(request: NextRequest) {
     })
 
     // Add all additional questions
-    selectedQuestions.push(...additionalQuestions.map((q) => {
-      const useRu = locale === 'ru'
-      return ({
-      id: q.id,
-      question: useRu ? (q.questionRu || q.question) : q.question,
-      options: useRu ? ((q.optionsRu && q.optionsRu.length) ? q.optionsRu : q.options) : q.options,
-      correctAnswer: q.correctAnswer,
-      explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
-      questionAudioUrl: q.questionAudioUrl,
-      questionTimestampsUrl: q.questionTimestampsUrl,
-      optionAudioUrls: q.optionAudioUrls,
-      optionTimestampsUrls: q.optionTimestampsUrls,
-      correctExplanationAudioUrl: q.correctExplanationAudioUrl,
-      correctExplanationTimestampsUrl: q.correctExplanationTimestampsUrl,
-      incorrectExplanationAudioUrls: q.incorrectExplanationAudioUrls,
-      incorrectExplanationTimestampsUrls: q.incorrectExplanationTimestampsUrls,
-      source: 'additional',
-    })
-    }))
+    selectedQuestions.push(
+      ...additionalQuestions.map((q) => {
+        const useRu = locale === 'ru'
+        const row = q as unknown as Record<string, unknown>
+        return {
+          id: q.id,
+          question: useRu ? (q.questionRu || q.question) : q.question,
+          options: useRu ? (q.optionsRu && q.optionsRu.length ? q.optionsRu : q.options) : q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: useRu ? (q.explanationRu || q.explanation) : q.explanation,
+          ...localeQuizAudioFields(row, useRu),
+          source: 'additional',
+        }
+      })
+    )
 
     // Shuffle all questions together using Fisher-Yates algorithm
     const shuffledAll = [...selectedQuestions];

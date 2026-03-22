@@ -66,7 +66,38 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { question, options, correctAnswer, explanation, chapterId, quizType, order, audioUrl, timestampsUrl, questionAudioUrl, questionTimestampsUrl, optionAudioUrls, optionTimestampsUrls, explanationAudioUrl, explanationTimestampsUrl, correctExplanationAudioUrl, correctExplanationTimestampsUrl, incorrectExplanationAudioUrls, incorrectExplanationTimestampsUrls } = body
+    const {
+      question,
+      options,
+      correctAnswer,
+      explanation,
+      chapterId,
+      quizType,
+      order,
+      audioUrl,
+      timestampsUrl,
+      questionAudioUrl,
+      questionTimestampsUrl,
+      optionAudioUrls,
+      optionTimestampsUrls,
+      explanationAudioUrl,
+      explanationTimestampsUrl,
+      correctExplanationAudioUrl,
+      correctExplanationTimestampsUrl,
+      incorrectExplanationAudioUrls,
+      incorrectExplanationTimestampsUrls,
+      questionRu,
+      optionsRu,
+      explanationRu,
+      questionAudioUrlRu,
+      questionTimestampsUrlRu,
+      optionAudioUrlsRu,
+      optionTimestampsUrlsRu,
+      correctExplanationAudioUrlRu,
+      correctExplanationTimestampsUrlRu,
+      incorrectExplanationAudioUrlsRu,
+      incorrectExplanationTimestampsUrlsRu,
+    } = body
 
     const updatedQuestion = await prisma.quizQuestion.update({
       where: { id },
@@ -90,6 +121,17 @@ export async function PUT(
         correctExplanationTimestampsUrl: correctExplanationTimestampsUrl !== undefined ? correctExplanationTimestampsUrl : undefined,
         incorrectExplanationAudioUrls: incorrectExplanationAudioUrls !== undefined ? incorrectExplanationAudioUrls : undefined,
         incorrectExplanationTimestampsUrls: incorrectExplanationTimestampsUrls !== undefined ? incorrectExplanationTimestampsUrls : undefined,
+        questionRu: questionRu !== undefined ? questionRu : undefined,
+        optionsRu: optionsRu !== undefined ? optionsRu : undefined,
+        explanationRu: explanationRu !== undefined ? explanationRu : undefined,
+        questionAudioUrlRu: questionAudioUrlRu !== undefined ? questionAudioUrlRu : undefined,
+        questionTimestampsUrlRu: questionTimestampsUrlRu !== undefined ? questionTimestampsUrlRu : undefined,
+        optionAudioUrlsRu: optionAudioUrlsRu !== undefined ? optionAudioUrlsRu : undefined,
+        optionTimestampsUrlsRu: optionTimestampsUrlsRu !== undefined ? optionTimestampsUrlsRu : undefined,
+        correctExplanationAudioUrlRu: correctExplanationAudioUrlRu !== undefined ? correctExplanationAudioUrlRu : undefined,
+        correctExplanationTimestampsUrlRu: correctExplanationTimestampsUrlRu !== undefined ? correctExplanationTimestampsUrlRu : undefined,
+        incorrectExplanationAudioUrlsRu: incorrectExplanationAudioUrlsRu !== undefined ? incorrectExplanationAudioUrlsRu : undefined,
+        incorrectExplanationTimestampsUrlsRu: incorrectExplanationTimestampsUrlsRu !== undefined ? incorrectExplanationTimestampsUrlsRu : undefined,
       },
       include: {
         chapter: {

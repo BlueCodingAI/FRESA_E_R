@@ -436,6 +436,22 @@ export default function AdminPage() {
 
         {/* Special Pages */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6">
+          {/* Bulk EN → RU */}
+          <div className="bg-[#1a1f3a]/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-rose-500/30 p-4 md:p-6 md:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 md:mb-4 gap-3">
+              <h2 className="text-lg md:text-xl font-bold text-white">Bulk translate to Russian</h2>
+              <Link
+                href="/admin/bulk-translate"
+                className="px-3 py-2 bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300 text-sm w-full sm:w-auto text-center"
+              >
+                Open tool
+              </Link>
+            </div>
+            <p className="text-gray-400 text-xs md:text-sm">
+              Translate all English course text and quizzes to Russian in one run, and generate Russian audio (OpenAI + Inworld).
+            </p>
+          </div>
+
           {/* Introduction Page Editor */}
           <div className="bg-[#1a1f3a]/90 backdrop-blur-lg rounded-2xl shadow-2xl border border-purple-500/20 p-4 md:p-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 md:mb-4 gap-3">

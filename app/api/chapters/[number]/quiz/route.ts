@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyToken } from '@/lib/auth'
 import { getRequestLocale } from '@/lib/locale-server'
+import { localeQuizAudioFields } from '@/lib/quiz-locale'
 
 // GET - Get quiz questions for a chapter with proper count
 export async function GET(
@@ -76,44 +77,10 @@ export async function GET(
     })
 
     // Format questions
-    const formattedQuestions = selectedQuestions.map((q: any) => {
+    const formattedQuestions = selectedQuestions.map((q: Record<string, unknown>) => {
       const useRu = locale === 'ru'
-      let optionAudioUrls = q.optionAudioUrls
-      let optionTimestampsUrls = q.optionTimestampsUrls
-      let incorrectExplanationAudioUrls = q.incorrectExplanationAudioUrls
-      let incorrectExplanationTimestampsUrls = q.incorrectExplanationTimestampsUrls
-
-      if (typeof optionAudioUrls === 'string') {
-        try {
-          optionAudioUrls = JSON.parse(optionAudioUrls)
-        } catch (e) {
-          optionAudioUrls = null
-        }
-      }
-      if (typeof optionTimestampsUrls === 'string') {
-        try {
-          optionTimestampsUrls = JSON.parse(optionTimestampsUrls)
-        } catch (e) {
-          optionTimestampsUrls = null
-        }
-      }
-      if (typeof incorrectExplanationAudioUrls === 'string') {
-        try {
-          incorrectExplanationAudioUrls = JSON.parse(incorrectExplanationAudioUrls)
-        } catch (e) {
-          incorrectExplanationAudioUrls = null
-        }
-      }
-      if (typeof incorrectExplanationTimestampsUrls === 'string') {
-        try {
-          incorrectExplanationTimestampsUrls = JSON.parse(incorrectExplanationTimestampsUrls)
-        } catch (e) {
-          incorrectExplanationTimestampsUrls = null
-        }
-      }
-
       const question = useRu ? (q.questionRu || q.question) : q.question
-      const options = useRu ? (q.optionsRu && q.optionsRu.length ? q.optionsRu : q.options) : q.options
+      const options = useRu ? (q.optionsRu && (q.optionsRu as string[]).length ? q.optionsRu : q.options) : q.options
       const explanation = useRu ? (q.explanationRu || q.explanation) : q.explanation
 
       return {
@@ -122,14 +89,7 @@ export async function GET(
         options,
         correctAnswer: q.correctAnswer,
         explanation,
-        questionAudioUrl: q.questionAudioUrl,
-        questionTimestampsUrl: q.questionTimestampsUrl,
-        optionAudioUrls,
-        optionTimestampsUrls,
-        correctExplanationAudioUrl: q.correctExplanationAudioUrl,
-        correctExplanationTimestampsUrl: q.correctExplanationTimestampsUrl,
-        incorrectExplanationAudioUrls,
-        incorrectExplanationTimestampsUrls,
+        ...localeQuizAudioFields(q, useRu),
       }
     })
 

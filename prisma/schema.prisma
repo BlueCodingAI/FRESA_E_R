@@ -112,6 +112,14 @@ model QuizQuestion {
   correctExplanationTimestampsUrl String? // Timestamps URL for correct explanation
   incorrectExplanationAudioUrls Json? // Array of audio URLs for incorrect explanations [string, string, ...]
   incorrectExplanationTimestampsUrls Json? // Array of timestamps URLs for incorrect explanations [string, string, ...]
+  questionAudioUrlRu String?
+  questionTimestampsUrlRu String?
+  optionAudioUrlsRu Json?
+  optionTimestampsUrlsRu Json?
+  correctExplanationAudioUrlRu String?
+  correctExplanationTimestampsUrlRu String?
+  incorrectExplanationAudioUrlsRu Json?
+  incorrectExplanationTimestampsUrlsRu Json?
   order         Int      @default(0)
   quizType      String   @default("chapter") // "chapter", "eligibility", etc.
   createdAt     DateTime @default(now())
@@ -158,6 +166,14 @@ model AdditionalQuestion {
   correctExplanationTimestampsUrl String? // Timestamps URL for correct explanation
   incorrectExplanationAudioUrls Json? // Array of audio URLs for incorrect explanations [string, string, ...]
   incorrectExplanationTimestampsUrls Json? // Array of timestamps URLs for incorrect explanations [string, string, ...]
+  questionAudioUrlRu String?
+  questionTimestampsUrlRu String?
+  optionAudioUrlsRu Json?
+  optionTimestampsUrlsRu Json?
+  correctExplanationAudioUrlRu String?
+  correctExplanationTimestampsUrlRu String?
+  incorrectExplanationAudioUrlsRu Json?
+  incorrectExplanationTimestampsUrlsRu Json?
   order         Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

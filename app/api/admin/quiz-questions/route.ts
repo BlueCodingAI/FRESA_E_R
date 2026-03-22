@@ -63,7 +63,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { question, options, correctAnswer, explanation, chapterId, quizType, order, audioUrl, timestampsUrl, questionAudioUrl, questionTimestampsUrl, optionAudioUrls, optionTimestampsUrls, explanationAudioUrl, explanationTimestampsUrl, correctExplanationAudioUrl, correctExplanationTimestampsUrl, incorrectExplanationAudioUrls, incorrectExplanationTimestampsUrls } = body
+    const {
+      question,
+      options,
+      correctAnswer,
+      explanation,
+      chapterId,
+      quizType,
+      order,
+      audioUrl,
+      timestampsUrl,
+      questionAudioUrl,
+      questionTimestampsUrl,
+      optionAudioUrls,
+      optionTimestampsUrls,
+      explanationAudioUrl,
+      explanationTimestampsUrl,
+      correctExplanationAudioUrl,
+      correctExplanationTimestampsUrl,
+      incorrectExplanationAudioUrls,
+      incorrectExplanationTimestampsUrls,
+      questionRu,
+      optionsRu,
+      explanationRu,
+      questionAudioUrlRu,
+      questionTimestampsUrlRu,
+      optionAudioUrlsRu,
+      optionTimestampsUrlsRu,
+      correctExplanationAudioUrlRu,
+      correctExplanationTimestampsUrlRu,
+      incorrectExplanationAudioUrlsRu,
+      incorrectExplanationTimestampsUrlsRu,
+    } = body
 
     if (!question || !options || correctAnswer === undefined) {
       return NextResponse.json(
@@ -93,6 +124,17 @@ export async function POST(request: NextRequest) {
         correctExplanationTimestampsUrl: correctExplanationTimestampsUrl || null,
         incorrectExplanationAudioUrls: incorrectExplanationAudioUrls || null,
         incorrectExplanationTimestampsUrls: incorrectExplanationTimestampsUrls || null,
+        questionRu: questionRu ?? null,
+        optionsRu: optionsRu ?? null,
+        explanationRu: explanationRu ?? null,
+        questionAudioUrlRu: questionAudioUrlRu ?? null,
+        questionTimestampsUrlRu: questionTimestampsUrlRu ?? null,
+        optionAudioUrlsRu: optionAudioUrlsRu ?? null,
+        optionTimestampsUrlsRu: optionTimestampsUrlsRu ?? null,
+        correctExplanationAudioUrlRu: correctExplanationAudioUrlRu ?? null,
+        correctExplanationTimestampsUrlRu: correctExplanationTimestampsUrlRu ?? null,
+        incorrectExplanationAudioUrlsRu: incorrectExplanationAudioUrlsRu ?? null,
+        incorrectExplanationTimestampsUrlsRu: incorrectExplanationTimestampsUrlsRu ?? null,
       },
       include: {
         chapter: {

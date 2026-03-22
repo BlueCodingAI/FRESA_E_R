@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { getRequestLocale } from '@/lib/locale-server'
+import { localeQuizAudioFields } from '@/lib/quiz-locale'
 
 // Helper function to validate file exists
 function validateFileUrl(url: string | null): string | null {
@@ -76,21 +77,22 @@ export async function GET(
           imageUrl: section.imageUrl || null,
         }
       }),
-      quizQuestions: chapter.quizQuestions.map((question: any) => ({
-        ...question,
-        // Ensure all audio URLs are properly returned
-        // JSON fields (arrays) are automatically serialized by Prisma
-        questionAudioUrl: question.questionAudioUrl || null,
-        questionTimestampsUrl: question.questionTimestampsUrl || null,
-        optionAudioUrls: question.optionAudioUrls || null,
-        optionTimestampsUrls: question.optionTimestampsUrls || null,
-        explanationAudioUrl: question.explanationAudioUrl || null,
-        explanationTimestampsUrl: question.explanationTimestampsUrl || null,
-        correctExplanationAudioUrl: question.correctExplanationAudioUrl || null,
-        correctExplanationTimestampsUrl: question.correctExplanationTimestampsUrl || null,
-        incorrectExplanationAudioUrls: question.incorrectExplanationAudioUrls || null,
-        incorrectExplanationTimestampsUrls: question.incorrectExplanationTimestampsUrls || null,
-      })),
+      quizQuestions: chapter.quizQuestions.map((question: Record<string, unknown>) => {
+        const useRu = locale === 'ru'
+        return {
+          ...question,
+          question: useRu
+            ? ((question.questionRu as string) || (question.question as string))
+            : (question.question as string),
+          options: useRu
+            ? ((question.optionsRu as string[])?.length ? question.optionsRu : question.options)
+            : question.options,
+          explanation: useRu
+            ? (question.explanationRu || question.explanation)
+            : question.explanation,
+          ...localeQuizAudioFields(question, useRu),
+        }
+      }),
     }
 
     return NextResponse.json(
