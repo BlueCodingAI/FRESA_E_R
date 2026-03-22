@@ -22,6 +22,7 @@ export const SITE_TRIPLES: [string, string, string][] = [
   ["lang.menu_us", "US English", "US English"],
   ["lang.menu_ru", "RU Russian", "RU Russian"],
   ["lang.switch", "Change language", "Сменить язык"],
+  ["lang.switchTo", "Switch to {lang}", "Переключить на {lang}"],
   ["user.adminPanel", "Admin Panel", "Админ-панель"],
   ["user.profile", "Profile", "Профиль"],
   ["user.logout", "Logout", "Выйти"],
