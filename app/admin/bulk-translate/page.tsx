@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import StarsBackground from "@/components/StarsBackground";
@@ -11,6 +11,24 @@ function getToken() {
     .find((row) => row.startsWith("auth-token="))
     ?.split("=")[1];
 }
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+type Plan = {
+  hasIntroduction: boolean;
+  chapterCount: number;
+  sectionCount: number;
+  quizQuestionCount: number;
+  additionalQuestionCount: number;
+};
+
+type Defaults = {
+  sectionsBatch: number;
+  quizBatch: number;
+  chapterMetadataBatch: number;
+};
 
 export default function BulkTranslatePage() {
   const router = useRouter();
@@ -29,6 +47,26 @@ export default function BulkTranslatePage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const [progressLabel, setProgressLabel] = useState("");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(0);
+  const abortRef = useRef(false);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  const appendLogs = useCallback((lines: string[]) => {
+    if (lines.length === 0) return;
+    setLogs((prev) => [...prev, ...lines]);
+  }, []);
+
+  const appendErrors = useCallback((lines: string[]) => {
+    if (lines.length === 0) return;
+    setErrors((prev) => [...prev, ...lines]);
+  }, []);
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
 
   useEffect(() => {
     (async () => {
@@ -54,6 +92,51 @@ export default function BulkTranslatePage() {
     })();
   }, [router]);
 
+  const postBatch = async (
+    body: Record<string, unknown>,
+    token: string,
+    retries = 2
+  ): Promise<Record<string, unknown>> => {
+    let lastErr: Error | null = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch("/api/admin/bulk-translate-to-russian", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let data: Record<string, unknown> = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          throw new Error(
+            `Bad response (${res.status}): ${text.slice(0, 180)}${text.length > 180 ? "…" : ""}`
+          );
+        }
+        if (!res.ok) {
+          throw new Error(
+            (data.error as string) || `Request failed (${res.status})`
+          );
+        }
+        return data;
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error(String(e));
+        if (attempt < retries) {
+          appendLogs([
+            `… retry ${attempt + 1}/${retries} after error: ${lastErr.message}`,
+          ]);
+          await sleep(2000);
+        }
+      }
+    }
+    throw lastErr ?? new Error("Unknown error");
+  };
+
   const runBulk = async () => {
     const token = getToken();
     if (!token) {
@@ -62,47 +145,199 @@ export default function BulkTranslatePage() {
     }
     if (
       !confirm(
-        "This will translate English content to Russian using OpenAI" +
-          (generateAudio ? " and generate Russian audio with Inworld." : ".") +
-          " It may take several minutes. Continue?"
+        "This runs in small batches to avoid server timeouts. Keep this tab open until finished. Continue?"
       )
     ) {
       return;
     }
+
+    abortRef.current = false;
     setRunning(true);
     setLogs([]);
     setErrors([]);
     setMessage("");
+    setProgressPercent(0);
+    setCurrentStep(0);
+    setProgressLabel("Starting…");
+
+    const baseOpts = {
+      forceRetranslateText,
+      generateAudio,
+      forceRegenerateAudio,
+    };
+
     try {
-      const res = await fetch("/api/admin/bulk-translate-to-russian", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          forceRetranslateText,
-          generateAudio,
-          forceRegenerateAudio,
-          scope,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage(data.error || "Request failed");
-        setErrors(data.errors || []);
-        setLogs(data.logs || []);
+      // --- Plan ---
+      setProgressLabel("Fetching plan…");
+      const planRes = await postBatch({ mode: "plan", ...baseOpts }, token);
+      const plan = planRes.plan as Plan;
+      const defaults = planRes.defaults as Defaults;
+
+      const chBatch = defaults.chapterMetadataBatch;
+      const secBatch = defaults.sectionsBatch;
+      const qBatch = defaults.quizBatch;
+
+      let steps = 0;
+      if (scope.introduction && plan.hasIntroduction) steps += 1;
+      if (scope.chapterMetadata && plan.chapterCount > 0) {
+        steps += Math.ceil(plan.chapterCount / chBatch);
+      }
+      if (scope.sections && plan.sectionCount > 0) {
+        steps += Math.ceil(plan.sectionCount / secBatch);
+      }
+      if (scope.quizQuestions && plan.quizQuestionCount > 0) {
+        steps += Math.ceil(plan.quizQuestionCount / qBatch);
+      }
+      if (scope.additionalQuestions && plan.additionalQuestionCount > 0) {
+        steps += Math.ceil(plan.additionalQuestionCount / qBatch);
+      }
+      if (steps === 0) {
+        setMessage("Nothing to process with current selections.");
+        setRunning(false);
         return;
       }
-      setLogs(data.logs || []);
-      setErrors(data.errors || []);
-      setMessage(data.message || "Done.");
+      setTotalSteps(steps);
+
+      let step = 0;
+      const bump = (label: string) => {
+        step += 1;
+        setCurrentStep(step);
+        setProgressPercent(Math.round((step / steps) * 100));
+        setProgressLabel(label);
+      };
+
+      appendLogs([
+        `Plan: intro=${plan.hasIntroduction}, chapters=${plan.chapterCount}, sections=${plan.sectionCount}, quiz=${plan.quizQuestionCount}, additional=${plan.additionalQuestionCount}`,
+        `Batch sizes: chapter meta=${chBatch}, sections=${secBatch}, quiz/additional=${qBatch}`,
+        `---`,
+      ]);
+
+      // Introduction
+      if (abortRef.current) throw new Error("Stopped by user");
+      if (scope.introduction && plan.hasIntroduction) {
+        setProgressLabel("Introduction…");
+        const r = await postBatch({ mode: "introduction", ...baseOpts }, token);
+        appendLogs((r.logs as string[]) || []);
+        appendErrors((r.errors as string[]) || []);
+        bump("Introduction done");
+      }
+
+      // Chapter metadata (paged)
+      if (abortRef.current) throw new Error("Stopped by user");
+      if (scope.chapterMetadata && plan.chapterCount > 0) {
+        let off = 0;
+        let more = true;
+        while (more) {
+          if (abortRef.current) throw new Error("Stopped by user");
+          setProgressLabel(`Chapter titles & descriptions (${off}/${plan.chapterCount})…`);
+          const r = await postBatch(
+            {
+              mode: "chapterMetadata",
+              offset: off,
+              limit: chBatch,
+              ...baseOpts,
+            },
+            token
+          );
+          appendLogs((r.logs as string[]) || []);
+          appendErrors((r.errors as string[]) || []);
+          more = Boolean(r.hasMore);
+          off = r.nextOffset as number;
+          bump(`Chapter metadata batch → ${off}`);
+        }
+      }
+
+      // Sections (paged)
+      if (abortRef.current) throw new Error("Stopped by user");
+      if (scope.sections && plan.sectionCount > 0) {
+        let off = 0;
+        let more = true;
+        while (more) {
+          if (abortRef.current) throw new Error("Stopped by user");
+          setProgressLabel(`Sections (${off}/${plan.sectionCount})…`);
+          const r = await postBatch(
+            {
+              mode: "sections",
+              offset: off,
+              limit: secBatch,
+              ...baseOpts,
+            },
+            token
+          );
+          appendLogs((r.logs as string[]) || []);
+          appendErrors((r.errors as string[]) || []);
+          more = Boolean(r.hasMore);
+          off = r.nextOffset as number;
+          bump(`Sections batch → ${off}`);
+        }
+      }
+
+      // Quiz questions (paged)
+      if (abortRef.current) throw new Error("Stopped by user");
+      if (scope.quizQuestions && plan.quizQuestionCount > 0) {
+        let off = 0;
+        let more = true;
+        while (more) {
+          if (abortRef.current) throw new Error("Stopped by user");
+          setProgressLabel(`Quiz questions (${off}/${plan.quizQuestionCount})…`);
+          const r = await postBatch(
+            {
+              mode: "quizQuestions",
+              offset: off,
+              limit: qBatch,
+              ...baseOpts,
+            },
+            token
+          );
+          appendLogs((r.logs as string[]) || []);
+          appendErrors((r.errors as string[]) || []);
+          more = Boolean(r.hasMore);
+          off = r.nextOffset as number;
+          bump(`Quiz batch → ${off}`);
+        }
+      }
+
+      // Additional questions (paged)
+      if (abortRef.current) throw new Error("Stopped by user");
+      if (scope.additionalQuestions && plan.additionalQuestionCount > 0) {
+        let off = 0;
+        let more = true;
+        while (more) {
+          if (abortRef.current) throw new Error("Stopped by user");
+          setProgressLabel(`Additional questions (${off}/${plan.additionalQuestionCount})…`);
+          const r = await postBatch(
+            {
+              mode: "additionalQuestions",
+              offset: off,
+              limit: qBatch,
+              ...baseOpts,
+            },
+            token
+          );
+          appendLogs((r.logs as string[]) || []);
+          appendErrors((r.errors as string[]) || []);
+          more = Boolean(r.hasMore);
+          off = r.nextOffset as number;
+          bump(`Additional batch → ${off}`);
+        }
+      }
+
+      setProgressPercent(100);
+      setProgressLabel("Finished");
+      setMessage("Bulk EN → RU run completed. Check errors below if any.");
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Failed");
+      const err = e instanceof Error ? e.message : String(e);
+      setMessage(err);
+      appendErrors([err]);
+      appendLogs([`Stopped: ${err}`]);
     } finally {
       setRunning(false);
     }
+  };
+
+  const stopRun = () => {
+    abortRef.current = true;
+    setProgressLabel("Stopping after current batch…");
   };
 
   if (loading) {
@@ -123,7 +358,8 @@ export default function BulkTranslatePage() {
               Bulk EN → RU + audio
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Translate all course & quiz content to Russian and optionally generate RU audio (Inworld).
+              Runs in <strong className="text-gray-300">small server batches</strong> so nginx/proxy
+              timeouts don&apos;t kill the job. Live progress below.
             </p>
           </div>
           <Link
@@ -145,7 +381,7 @@ export default function BulkTranslatePage() {
               />
               <span>
                 <strong className="text-white">Re-translate Russian text</strong> even when Russian
-                fields already exist (overwrites existing RU copy)
+                fields already exist
               </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -157,7 +393,9 @@ export default function BulkTranslatePage() {
               />
               <span>
                 <strong className="text-white">Generate Russian audio</strong> (requires{" "}
-                <code className="text-cyan-400">INWORLD_API_KEY</code>)
+                <code className="text-cyan-400">INWORLD_API_KEY</code>) — uses{" "}
+                <strong className="text-white">1 section / 1 quiz row per batch</strong> to stay
+                within time limits
               </span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer ml-6">
@@ -169,7 +407,7 @@ export default function BulkTranslatePage() {
                 className="rounded border-cyan-500/50 disabled:opacity-40"
               />
               <span className={!generateAudio ? "opacity-50" : ""}>
-                Regenerate RU audio even if Russian audio URLs already exist
+                Regenerate RU audio even if URLs already exist
               </span>
             </label>
           </div>
@@ -193,6 +431,7 @@ export default function BulkTranslatePage() {
                     onChange={(e) =>
                       setScope((s) => ({ ...s, [key]: e.target.checked }))
                     }
+                    disabled={running}
                     className="rounded border-cyan-500/50"
                   />
                   {label}
@@ -201,18 +440,46 @@ export default function BulkTranslatePage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={running}
-            onClick={runBulk}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-cyan-600 hover:to-blue-700 transition-all"
-          >
-            {running ? "Running… (keep this tab open)" : "Run bulk translation + audio"}
-          </button>
+          {/* Progress */}
+          <div className="rounded-xl border border-cyan-500/25 bg-[#0a0e27]/60 p-4 space-y-2">
+            <div className="flex justify-between text-xs text-gray-400">
+              <span className="text-cyan-300 font-medium truncate pr-2">{progressLabel}</span>
+              <span>
+                {totalSteps > 0 ? `${currentStep} / ${totalSteps} batches` : ""}{" "}
+                {progressPercent > 0 ? `· ${progressPercent}%` : ""}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-[#1a1f3a] overflow-hidden border border-cyan-500/20">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300 ease-out"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              disabled={running}
+              onClick={runBulk}
+              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:from-cyan-600 hover:to-blue-700 transition-all"
+            >
+              {running ? "Running…" : "Run bulk translation + audio"}
+            </button>
+            {running && (
+              <button
+                type="button"
+                onClick={stopRun}
+                className="py-3 px-4 rounded-xl border border-red-500/40 text-red-300 hover:bg-red-500/10 text-sm font-semibold"
+              >
+                Stop after current batch
+              </button>
+            )}
+          </div>
 
           {message && (
             <p
-              className={`text-sm ${errors.length ? "text-amber-300" : "text-green-400"}`}
+              className={`text-sm ${errors.length && !message.includes("completed") ? "text-amber-300" : "text-green-400"}`}
             >
               {message}
             </p>
@@ -231,18 +498,20 @@ export default function BulkTranslatePage() {
 
           {logs.length > 0 && (
             <div className="rounded-lg border border-cyan-500/30 bg-[#0a0e27]/80 p-4">
-              <p className="text-cyan-300 font-semibold text-sm mb-2">Log</p>
-              <ul className="text-xs text-gray-400 space-y-1 max-h-96 overflow-y-auto font-mono whitespace-pre-wrap">
+              <p className="text-cyan-300 font-semibold text-sm mb-2">Live log</p>
+              <ul className="text-xs text-gray-400 space-y-1 max-h-[min(70vh,480px)] overflow-y-auto font-mono whitespace-pre-wrap">
                 {logs.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
+                <div ref={logEndRef} />
               </ul>
             </div>
           )}
 
           <p className="text-xs text-gray-500">
-            Requires <code className="text-gray-400">OPENAI_API_KEY</code>. Large courses can take a long
-            time; run on your server with a generous HTTP timeout if needed.
+            <code className="text-gray-400">OPENAI_API_KEY</code> required. Each batch returns quickly;
+            for huge courses, expect many batches. On the server, you can still raise{" "}
+            <code className="text-gray-400">proxy_read_timeout</code> in nginx as a safety net.
           </p>
         </div>
       </div>

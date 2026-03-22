@@ -345,6 +345,8 @@ server {
 }
 ```
 
+**Bulk translate (Admin → Bulk EN → RU):** The admin tool calls `/api/admin/bulk-translate-to-russian` in **small batches** (e.g. one section or one quiz question per request when generating audio) so each response returns before nginx/Cloudflare timeouts. You should see **live progress** in the UI. The timeouts above are still a good safety net for heavy single requests (e.g. manual audio generation).
+
 ### Enable Site
 
 ```bash
