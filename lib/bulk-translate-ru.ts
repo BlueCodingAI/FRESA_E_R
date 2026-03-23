@@ -1,5 +1,5 @@
 /**
- * Shared EN→RU bulk translation + optional RU audio (used by batched API routes).
+ * Shared EN→RU bulk translation + optional RU/EN audio (used by batched API routes).
  */
 
 import { prisma } from '@/lib/prisma'
@@ -33,8 +33,14 @@ export function needsTextTranslate(
 
 export interface BulkOptions {
   forceRetranslateText: boolean
+  /** Generate Russian (RU) audio for RU text */
   generateAudio: boolean
+  /** Regenerate RU audio even when URLs exist */
   forceRegenerateAudio: boolean
+  /** Generate English audio from English question/section text */
+  generateEnglishAudio: boolean
+  /** Regenerate EN audio even when URLs exist */
+  forceRegenerateEnglishAudio: boolean
 }
 
 export interface BulkBatchResult {
@@ -78,25 +84,32 @@ export async function runIntroductionBatch(opts: BulkOptions): Promise<BulkBatch
       return { logs, errors }
     }
 
+    const skipRuTranslation = !opts.forceRetranslateText && !opts.generateAudio
+
     let textRu = intro.textRu
-    if (needsTextTranslate(opts.forceRetranslateText, intro.text, intro.textRu)) {
-      textRu = await openaiTranslate(intro.text, 'en_to_ru', 'html')
-      await sleep(120)
-      push('Introduction: translated text to Russian')
+    if (!skipRuTranslation) {
+      if (needsTextTranslate(opts.forceRetranslateText, intro.text, intro.textRu)) {
+        textRu = await openaiTranslate(intro.text, 'en_to_ru', 'html')
+        await sleep(120)
+        push('Introduction: translated text to Russian')
+      } else {
+        push('Introduction: skipped text (already has Russian or no English)')
+      }
     } else {
-      push('Introduction: skipped text (already has Russian or no English)')
+      push('Introduction: skipped RU translation (EN-audio-only mode)')
     }
 
     let audioUrlRu = intro.audioUrlRu
     let timestampsUrlRu = intro.timestampsUrlRu
-    if (opts.generateAudio && textRu?.trim()) {
+    if (opts.generateAudio && (textRu ?? intro.textRu)?.trim()) {
+      const ruBody = (textRu ?? intro.textRu) as string
       const needAudio =
         opts.forceRegenerateAudio ||
         !intro.audioUrlRu?.trim() ||
         !intro.timestampsUrlRu?.trim()
       if (needAudio) {
         const gen = await generateAudioFilesToPublic({
-          text: textRu,
+          text: ruBody,
           context: 'section',
           fileKey: 'ru',
           uniqueId: `intro-${intro.id}`,
@@ -107,14 +120,44 @@ export async function runIntroductionBatch(opts: BulkOptions): Promise<BulkBatch
       }
     }
 
-    await prisma.section.update({
-      where: { id: intro.id },
-      data: {
-        textRu: textRu ?? intro.textRu,
-        audioUrlRu: audioUrlRu ?? null,
-        timestampsUrlRu: timestampsUrlRu ?? null,
-      },
-    })
+    let audioUrl = intro.audioUrl
+    let timestampsUrl = intro.timestampsUrl
+    if (opts.generateEnglishAudio && intro.text?.trim()) {
+      const needEn =
+        opts.forceRegenerateEnglishAudio ||
+        !intro.audioUrl?.trim() ||
+        !intro.timestampsUrl?.trim()
+      if (needEn) {
+        const gen = await generateAudioFilesToPublic({
+          text: intro.text,
+          context: 'section',
+          fileKey: 'en',
+          uniqueId: `intro-${intro.id}-en`,
+        })
+        audioUrl = gen.audioUrl
+        timestampsUrl = gen.timestampsUrl
+        push('Introduction: generated EN audio')
+      }
+    }
+
+    const data: Record<string, unknown> = {}
+    if (!skipRuTranslation) {
+      data.textRu = textRu ?? intro.textRu
+    }
+    if (opts.generateAudio) {
+      data.audioUrlRu = audioUrlRu ?? null
+      data.timestampsUrlRu = timestampsUrlRu ?? null
+    }
+    if (opts.generateEnglishAudio) {
+      data.audioUrl = audioUrl ?? null
+      data.timestampsUrl = timestampsUrl ?? null
+    }
+    if (Object.keys(data).length > 0) {
+      await prisma.section.update({
+        where: { id: intro.id },
+        data: data as any,
+      })
+    }
   } catch (e) {
     const m = e instanceof Error ? e.message : String(e)
     errors.push(`Introduction: ${m}`)
@@ -193,27 +236,32 @@ export async function runSectionsBatch(
 
   for (const sec of sections) {
     try {
+      const skipRuTranslation = !opts.forceRetranslateText && !opts.generateAudio
+
       let titleRu = sec.titleRu
       let textRu = sec.textRu
-      if (needsTextTranslate(opts.forceRetranslateText, sec.title, sec.titleRu)) {
-        titleRu = await openaiTranslate(sec.title, 'en_to_ru', 'plain')
-        await sleep(60)
-      }
-      if (needsTextTranslate(opts.forceRetranslateText, sec.text, sec.textRu)) {
-        textRu = await openaiTranslate(sec.text, 'en_to_ru', 'html')
-        await sleep(100)
+      if (!skipRuTranslation) {
+        if (needsTextTranslate(opts.forceRetranslateText, sec.title, sec.titleRu)) {
+          titleRu = await openaiTranslate(sec.title, 'en_to_ru', 'plain')
+          await sleep(60)
+        }
+        if (needsTextTranslate(opts.forceRetranslateText, sec.text, sec.textRu)) {
+          textRu = await openaiTranslate(sec.text, 'en_to_ru', 'html')
+          await sleep(100)
+        }
       }
 
       let audioUrlRu = sec.audioUrlRu
       let timestampsUrlRu = sec.timestampsUrlRu
-      if (opts.generateAudio && textRu?.trim()) {
+      if (opts.generateAudio && (textRu ?? sec.textRu)?.trim()) {
+        const ruBody = (textRu ?? sec.textRu) as string
         const needAudio =
           opts.forceRegenerateAudio ||
           !sec.audioUrlRu?.trim() ||
           !sec.timestampsUrlRu?.trim()
         if (needAudio) {
           const gen = await generateAudioFilesToPublic({
-            text: textRu,
+            text: ruBody,
             context: 'section',
             fileKey: 'ru',
             uniqueId: `sec-${sec.id}`,
@@ -223,15 +271,44 @@ export async function runSectionsBatch(
         }
       }
 
-      await prisma.section.update({
-        where: { id: sec.id },
-        data: {
-          titleRu: titleRu ?? sec.titleRu,
-          textRu: textRu ?? sec.textRu,
-          audioUrlRu: audioUrlRu ?? null,
-          timestampsUrlRu: timestampsUrlRu ?? null,
-        },
-      })
+      let audioUrl = sec.audioUrl
+      let timestampsUrl = sec.timestampsUrl
+      if (opts.generateEnglishAudio && sec.text?.trim()) {
+        const needEn =
+          opts.forceRegenerateEnglishAudio ||
+          !sec.audioUrl?.trim() ||
+          !sec.timestampsUrl?.trim()
+        if (needEn) {
+          const gen = await generateAudioFilesToPublic({
+            text: sec.text,
+            context: 'section',
+            fileKey: 'en',
+            uniqueId: `sec-${sec.id}-en`,
+          })
+          audioUrl = gen.audioUrl
+          timestampsUrl = gen.timestampsUrl
+        }
+      }
+
+      const data: Record<string, unknown> = {}
+      if (!skipRuTranslation) {
+        data.titleRu = titleRu ?? sec.titleRu
+        data.textRu = textRu ?? sec.textRu
+      }
+      if (opts.generateAudio) {
+        data.audioUrlRu = audioUrlRu ?? null
+        data.timestampsUrlRu = timestampsUrlRu ?? null
+      }
+      if (opts.generateEnglishAudio) {
+        data.audioUrl = audioUrl ?? null
+        data.timestampsUrl = timestampsUrl ?? null
+      }
+      if (Object.keys(data).length > 0) {
+        await prisma.section.update({
+          where: { id: sec.id },
+          data: data as any,
+        })
+      }
       push(`Section ${sec.id.slice(0, 8)}…: OK`)
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e)
@@ -246,87 +323,108 @@ export async function runSectionsBatch(
   return { logs, errors, nextOffset, hasMore }
 }
 
+type QuizRow = {
+  id: string
+  question: string
+  questionRu: string | null
+  options: string[]
+  optionsRu: string[] | null
+  explanation: unknown
+  explanationRu: unknown
+  questionAudioUrlRu?: string | null
+  questionTimestampsUrlRu?: string | null
+  questionAudioUrl?: string | null
+  questionTimestampsUrl?: string | null
+  optionAudioUrls?: unknown
+  optionTimestampsUrls?: unknown
+  correctExplanationAudioUrl?: string | null
+  correctExplanationTimestampsUrl?: string | null
+  incorrectExplanationAudioUrls?: unknown
+  incorrectExplanationTimestampsUrls?: unknown
+}
+
 export async function processQuizRow(
   opts: BulkOptions,
   kind: 'QuizQuestion' | 'AdditionalQuestion',
-  q: {
-    id: string
-    question: string
-    questionRu: string | null
-    options: string[]
-    optionsRu: string[] | null
-    explanation: unknown
-    explanationRu: unknown
-    questionAudioUrlRu?: string | null
-    questionTimestampsUrlRu?: string | null
-  },
+  q: QuizRow,
   push: (msg: string) => void
 ) {
+  const skipRuTranslation = !opts.forceRetranslateText && !opts.generateAudio
+
   let questionRu = q.questionRu
-  if (needsTextTranslate(opts.forceRetranslateText, q.question, q.questionRu)) {
-    questionRu = await openaiTranslate(q.question, 'en_to_ru', 'plain')
-    await sleep(80)
-  }
-
-  let optionsRu: string[]
-  if (
-    q.optionsRu &&
-    q.optionsRu.length === q.options.length &&
-    q.optionsRu.every((o) => o?.trim()) &&
-    !opts.forceRetranslateText
-  ) {
-    optionsRu = [...q.optionsRu]
-  } else {
-    optionsRu = []
-    for (const opt of q.options) {
-      optionsRu.push(await openaiTranslate(opt, 'en_to_ru', 'plain'))
-      await sleep(50)
-    }
-  }
-
-  const expl = asExpl(q.explanation)
+  let optionsRu: string[] | null = q.optionsRu
   let explanationRu = asExpl(q.explanationRu)
-  if (expl) {
-    const needExpl =
-      opts.forceRetranslateText ||
-      !explanationRu ||
-      !explanationRu.correct?.trim() ||
-      explanationRu.incorrect.length !== expl.incorrect.length
-    if (needExpl) {
-      const correctRu = await openaiTranslate(expl.correct, 'en_to_ru', 'plain')
-      await sleep(60)
-      const incorrectRu: string[] = []
-      for (const line of expl.incorrect) {
-        incorrectRu.push(await openaiTranslate(line, 'en_to_ru', 'plain'))
+
+  if (!skipRuTranslation) {
+    if (needsTextTranslate(opts.forceRetranslateText, q.question, q.questionRu)) {
+      questionRu = await openaiTranslate(q.question, 'en_to_ru', 'plain')
+      await sleep(80)
+    }
+
+    if (
+      q.optionsRu &&
+      q.optionsRu.length === q.options.length &&
+      q.optionsRu.every((o) => o?.trim()) &&
+      !opts.forceRetranslateText
+    ) {
+      optionsRu = [...q.optionsRu]
+    } else {
+      optionsRu = []
+      for (const opt of q.options) {
+        optionsRu.push(await openaiTranslate(opt, 'en_to_ru', 'plain'))
         await sleep(50)
       }
-      explanationRu = { correct: correctRu, incorrect: incorrectRu }
+    }
+
+    const expl = asExpl(q.explanation)
+    if (expl) {
+      const needExpl =
+        opts.forceRetranslateText ||
+        !explanationRu ||
+        !explanationRu.correct?.trim() ||
+        explanationRu.incorrect.length !== expl.incorrect.length
+      if (needExpl) {
+        const correctRu = await openaiTranslate(expl.correct, 'en_to_ru', 'plain')
+        await sleep(60)
+        const incorrectRu: string[] = []
+        for (const line of expl.incorrect) {
+          incorrectRu.push(await openaiTranslate(line, 'en_to_ru', 'plain'))
+          await sleep(50)
+        }
+        explanationRu = { correct: correctRu, incorrect: incorrectRu }
+      }
     }
   }
 
-  const baseData: Record<string, unknown> = {
-    questionRu: questionRu ?? q.questionRu,
-    optionsRu: optionsRu ?? q.optionsRu,
-    explanationRu: explanationRu ?? q.explanationRu,
+  const baseData: Record<string, unknown> = {}
+  if (!skipRuTranslation) {
+    baseData.questionRu = questionRu ?? q.questionRu
+    baseData.optionsRu = optionsRu ?? q.optionsRu
+    baseData.explanationRu = explanationRu ?? q.explanationRu
   }
 
-  if (opts.generateAudio && questionRu?.trim() && optionsRu?.length && explanationRu) {
+  const ruQ = (questionRu ?? q.questionRu)?.trim()
+  const ruOpts =
+    optionsRu && optionsRu.length === q.options.length ? optionsRu : null
+  const ruExpl = explanationRu
+
+  if (opts.generateAudio && ruQ && ruOpts && ruExpl) {
     const hasAudio =
       !opts.forceRegenerateAudio &&
       Boolean(q.questionAudioUrlRu?.trim()) &&
       Boolean(q.questionTimestampsUrlRu?.trim())
     if (!hasAudio) {
       const qAu = await generateAudioFilesToPublic({
-        text: questionRu,
+        text: ruQ,
         context: 'quiz',
         fileKey: 'ru',
         uniqueId: `${kind}-${q.id}-qu`,
       })
       const optAud: string[] = []
       const optTs: string[] = []
-      for (let i = 0; i < optionsRu.length; i++) {
+      for (let i = 0; i < ruOpts.length; i++) {
         const g = await generateAudioFilesToPublic({
-          text: optionsRu[i],
+          text: ruOpts[i],
           context: 'quiz',
           fileKey: 'ru',
           uniqueId: `${kind}-${q.id}-o${i}`,
@@ -335,16 +433,16 @@ export async function processQuizRow(
         optTs.push(g.timestampsUrl)
       }
       const gCor = await generateAudioFilesToPublic({
-        text: explanationRu.correct,
+        text: ruExpl.correct,
         context: 'quiz',
         fileKey: 'ru',
         uniqueId: `${kind}-${q.id}-ec`,
       })
       const incAud: string[] = []
       const incTs: string[] = []
-      for (let i = 0; i < explanationRu.incorrect.length; i++) {
+      for (let i = 0; i < ruExpl.incorrect.length; i++) {
         const g = await generateAudioFilesToPublic({
-          text: explanationRu.incorrect[i],
+          text: ruExpl.incorrect[i],
           context: 'quiz',
           fileKey: 'ru',
           uniqueId: `${kind}-${q.id}-ei${i}`,
@@ -362,6 +460,71 @@ export async function processQuizRow(
       baseData.incorrectExplanationAudioUrlsRu = incAud
       baseData.incorrectExplanationTimestampsUrlsRu = incTs
     }
+  }
+
+  const explEn = asExpl(q.explanation)
+  if (
+    opts.generateEnglishAudio &&
+    q.question?.trim() &&
+    q.options?.length &&
+    explEn
+  ) {
+    const hasEnAudio =
+      !opts.forceRegenerateEnglishAudio &&
+      Boolean(q.questionAudioUrl?.trim()) &&
+      Boolean(q.questionTimestampsUrl?.trim())
+    if (!hasEnAudio) {
+      const qAu = await generateAudioFilesToPublic({
+        text: q.question,
+        context: 'quiz',
+        fileKey: 'en',
+        uniqueId: `${kind}-${q.id}-en-qu`,
+      })
+      const optAud: string[] = []
+      const optTs: string[] = []
+      for (let i = 0; i < q.options.length; i++) {
+        const g = await generateAudioFilesToPublic({
+          text: q.options[i],
+          context: 'quiz',
+          fileKey: 'en',
+          uniqueId: `${kind}-${q.id}-en-o${i}`,
+        })
+        optAud.push(g.audioUrl)
+        optTs.push(g.timestampsUrl)
+      }
+      const gCor = await generateAudioFilesToPublic({
+        text: explEn.correct,
+        context: 'quiz',
+        fileKey: 'en',
+        uniqueId: `${kind}-${q.id}-en-ec`,
+      })
+      const incAud: string[] = []
+      const incTs: string[] = []
+      for (let i = 0; i < explEn.incorrect.length; i++) {
+        const g = await generateAudioFilesToPublic({
+          text: explEn.incorrect[i],
+          context: 'quiz',
+          fileKey: 'en',
+          uniqueId: `${kind}-${q.id}-en-ei${i}`,
+        })
+        incAud.push(g.audioUrl)
+        incTs.push(g.timestampsUrl)
+      }
+
+      baseData.questionAudioUrl = qAu.audioUrl
+      baseData.questionTimestampsUrl = qAu.timestampsUrl
+      baseData.optionAudioUrls = optAud
+      baseData.optionTimestampsUrls = optTs
+      baseData.correctExplanationAudioUrl = gCor.audioUrl
+      baseData.correctExplanationTimestampsUrl = gCor.timestampsUrl
+      baseData.incorrectExplanationAudioUrls = incAud
+      baseData.incorrectExplanationTimestampsUrls = incTs
+    }
+  }
+
+  if (Object.keys(baseData).length === 0) {
+    push(`${kind} ${q.id.slice(0, 8)}…: skipped (nothing to update)`)
+    return
   }
 
   if (kind === 'QuizQuestion') {

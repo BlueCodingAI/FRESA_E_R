@@ -25,6 +25,9 @@ function parseBody(body: Record<string, unknown>) {
   const forceRetranslateText = Boolean(body.forceRetranslateText)
   const generateAudio = body.generateAudio !== false
   const forceRegenerateAudio = Boolean(body.forceRegenerateAudio)
+  const generateEnglishAudio = Boolean(body.generateEnglishAudio)
+  const forceRegenerateEnglishAudio = Boolean(body.forceRegenerateEnglishAudio)
+  const anyAudio = generateAudio || generateEnglishAudio
   const mode = (body.mode as BulkMode) || 'plan'
   const offset = Math.max(0, parseInt(String(body.offset ?? 0), 10) || 0)
   const rawLimit = body.limit
@@ -34,9 +37,9 @@ function parseBody(body: Record<string, unknown>) {
   } else {
     // Defaults: small batches when generating audio (many Inworld calls per quiz row)
     if (mode === 'sections') {
-      limit = generateAudio ? 1 : 6
+      limit = anyAudio ? 1 : 6
     } else if (mode === 'quizQuestions' || mode === 'additionalQuestions') {
-      limit = generateAudio ? 1 : 4
+      limit = anyAudio ? 1 : 4
     } else if (mode === 'chapterMetadata') {
       limit = 12
     } else {
@@ -48,6 +51,9 @@ function parseBody(body: Record<string, unknown>) {
     forceRetranslateText,
     generateAudio,
     forceRegenerateAudio,
+    generateEnglishAudio,
+    forceRegenerateEnglishAudio,
+    anyAudio,
     mode,
     offset,
     limit,
@@ -79,23 +85,26 @@ export async function POST(request: NextRequest) {
       forceRetranslateText: opts.forceRetranslateText,
       generateAudio: opts.generateAudio,
       forceRegenerateAudio: opts.forceRegenerateAudio,
+      generateEnglishAudio: opts.generateEnglishAudio,
+      forceRegenerateEnglishAudio: opts.forceRegenerateEnglishAudio,
     }
 
     if (opts.mode === 'plan') {
       const plan = await getBulkPlan()
+      const anyAudio = opts.anyAudio
       return NextResponse.json({
         ok: true,
         mode: 'plan',
         plan,
         defaults: {
-          sectionsBatch: bulkOpts.generateAudio ? 1 : 6,
-          quizBatch: bulkOpts.generateAudio ? 1 : 4,
+          sectionsBatch: anyAudio ? 1 : 6,
+          quizBatch: anyAudio ? 1 : 4,
           chapterMetadataBatch: 12,
         },
       })
     }
 
-    if (bulkOpts.generateAudio) {
+    if (opts.anyAudio) {
       try {
         assertInworldConfigured()
       } catch (e) {

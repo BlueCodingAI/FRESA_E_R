@@ -37,6 +37,9 @@ export default function BulkTranslatePage() {
   const [forceRetranslateText, setForceRetranslateText] = useState(false);
   const [generateAudio, setGenerateAudio] = useState(true);
   const [forceRegenerateAudio, setForceRegenerateAudio] = useState(false);
+  const [generateEnglishAudio, setGenerateEnglishAudio] = useState(false);
+  const [forceRegenerateEnglishAudio, setForceRegenerateEnglishAudio] =
+    useState(false);
   const [scope, setScope] = useState({
     introduction: true,
     chapterMetadata: true,
@@ -164,6 +167,8 @@ export default function BulkTranslatePage() {
       forceRetranslateText,
       generateAudio,
       forceRegenerateAudio,
+      generateEnglishAudio,
+      forceRegenerateEnglishAudio,
     };
 
     try {
@@ -208,6 +213,7 @@ export default function BulkTranslatePage() {
 
       appendLogs([
         `Plan: intro=${plan.hasIntroduction}, chapters=${plan.chapterCount}, sections=${plan.sectionCount}, quiz=${plan.quizQuestionCount}, additional=${plan.additionalQuestionCount}`,
+        `Audio: RU=${generateAudio}, EN=${generateEnglishAudio}`,
         `Batch sizes: chapter meta=${chBatch}, sections=${secBatch}, quiz/additional=${qBatch}`,
         `---`,
       ]);
@@ -410,6 +416,35 @@ export default function BulkTranslatePage() {
                 Regenerate RU audio even if URLs already exist
               </span>
             </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={generateEnglishAudio}
+                onChange={(e) => setGenerateEnglishAudio(e.target.checked)}
+                className="rounded border-cyan-500/50"
+              />
+              <span>
+                <strong className="text-white">Generate English audio</strong> from
+                English text (introduction, sections, quiz questions &amp; options &amp;
+                explanations) — uses{" "}
+                <code className="text-cyan-400">INWORLD_EN_VOICE_ID</code> via{" "}
+                <code className="text-cyan-400">fileKey: en</code>
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer ml-6">
+              <input
+                type="checkbox"
+                checked={forceRegenerateEnglishAudio}
+                onChange={(e) =>
+                  setForceRegenerateEnglishAudio(e.target.checked)
+                }
+                disabled={!generateEnglishAudio}
+                className="rounded border-cyan-500/50 disabled:opacity-40"
+              />
+              <span className={!generateEnglishAudio ? "opacity-50" : ""}>
+                Regenerate EN audio even if URLs already exist
+              </span>
+            </label>
           </div>
 
           <div>
@@ -419,7 +454,10 @@ export default function BulkTranslatePage() {
                 [
                   ["introduction", "Introduction page"],
                   ["chapterMetadata", "Chapter titles & descriptions"],
-                  ["sections", "All chapter sections (text + section RU audio)"],
+                  [
+                    "sections",
+                    "All chapter sections (text + optional RU/EN section audio)",
+                  ],
                   ["quizQuestions", "All quiz questions (chapter + eligibility + …)"],
                   ["additionalQuestions", "Additional exam questions"],
                 ] as const
