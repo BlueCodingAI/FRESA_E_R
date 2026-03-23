@@ -136,7 +136,11 @@ export async function runIntroductionBatch(opts: BulkOptions): Promise<BulkBatch
         })
         audioUrl = gen.audioUrl
         timestampsUrl = gen.timestampsUrl
-        push('Introduction: generated EN audio')
+        push('Introduction: generated EN audio (saved under public/audio + public/timestamps on the server)')
+      } else {
+        push(
+          'Introduction: skipped EN audio — English audioUrl/timestampsUrl already set (enable “Regenerate EN audio” to rewrite files)'
+        )
       }
     }
 
@@ -287,6 +291,10 @@ export async function runSectionsBatch(
           })
           audioUrl = gen.audioUrl
           timestampsUrl = gen.timestampsUrl
+        } else {
+          push(
+            `Section ${sec.id.slice(0, 8)}…: skipped EN audio (URLs already set — use force EN regenerate)`
+          )
         }
       }
 
@@ -473,6 +481,11 @@ export async function processQuizRow(
       !opts.forceRegenerateEnglishAudio &&
       Boolean(q.questionAudioUrl?.trim()) &&
       Boolean(q.questionTimestampsUrl?.trim())
+    if (hasEnAudio) {
+      push(
+        `${kind} ${q.id.slice(0, 8)}…: skipped EN quiz audio (question EN URLs already set — use force EN regenerate)`
+      )
+    }
     if (!hasEnAudio) {
       const qAu = await generateAudioFilesToPublic({
         text: q.question,
